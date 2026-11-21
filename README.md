@@ -19,7 +19,7 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
 ## Features
 
 - **Live streams**: featured streams in English or Turkish, loading more as you scroll
-- **Search** channels using Kick's own search
+- **Search** channels using Kick's own search, with your **recent searches** under the search box
 - **Channel page** with the live stream and the full list of **past broadcasts**
 - **Seeking that respects the TV**: pressing ← / → pauses the video and shows the target frame;
   press OK to continue from there (see [Performance](#performance))

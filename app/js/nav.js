@@ -69,6 +69,8 @@ var Nav = (function () {
       else if (dir === 'right') { if (r.left < cr.right - 4) continue; main = r.left - cr.right; cross = Math.abs(y - cy); }
       else if (dir === 'up') { if (r.bottom > cr.top + 4) continue; main = cr.top - r.bottom; cross = Math.abs(x - cx); }
       else { if (r.top < cr.bottom - 4) continue; main = r.top - cr.bottom; cross = Math.abs(x - cx); }
+      // Geniş bir öğeden (ör. arama kutusu) yukarı/aşağı inerken en soldaki öğeye git, ortadakine değil.
+      if (vertical && cr.width > r.width * 1.5) cross = Math.abs(r.left - cr.left);
       overlap = vertical ? false : (r.top < cr.bottom - 4 && r.bottom > cr.top + 4);
       found.push({ el: el, main: Math.max(main, 0), cross: cross, overlap: overlap });
     }

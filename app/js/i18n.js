@@ -18,7 +18,8 @@ var I18n = (function () {
       follow: '+  Takip et', following: '✓  Takip ediliyor', followedToast: '{name} takip edildi', unfollowedToast: '{name} takipten çıkarıldı',
       followedLive: 'Takip edilen canlı yayınlar', noFollowedLive: 'Takip ettiğin kanallardan şu an canlı olan yok.',
       settings: 'Ayarlar', followedChannels: 'Takip edilen kanallar', uiLanguage: 'Arayüz dili', remove: 'Kaldır',
-      noFollows: 'Henüz kanal takip etmiyorsun. Bir kanala girip "Takip et"e bas.'
+      noFollows: 'Henüz kanal takip etmiyorsun. Bir kanala girip "Takip et"e bas.',
+      recentSearches: 'Son aramalar', clearHistory: '✕  Geçmişi temizle'
     },
     en: {
       search: 'Search', langTr: 'Turkish streams', langEn: 'English streams', uiLang: 'UI: EN',
@@ -36,7 +37,8 @@ var I18n = (function () {
       follow: '+  Follow', following: '✓  Following', followedToast: 'Following {name}', unfollowedToast: 'Unfollowed {name}',
       followedLive: 'Followed channels live now', noFollowedLive: 'None of your followed channels are live right now.',
       settings: 'Settings', followedChannels: 'Followed channels', uiLanguage: 'Interface language', remove: 'Remove',
-      noFollows: 'You are not following any channels yet. Open a channel and press "Follow".'
+      noFollows: 'You are not following any channels yet. Open a channel and press "Follow".',
+      recentSearches: 'Recent searches', clearHistory: '✕  Clear history'
     }
   };
   // Default: English. A TV whose menu language is Turkish starts in Turkish. A choice made in Settings wins.

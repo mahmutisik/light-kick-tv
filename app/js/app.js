@@ -278,11 +278,40 @@
   }
 
   /* ---------- Arama ---------- */
+  function searchQuery() { return el('searchInput').value.replace(/^\s+|\s+$/g, ''); }
+  /* Son aramalar: kutu boşken (ya da sonuç yokken) arama kutusunun altında gösterilir. */
+  function renderHistory() {
+    var list = Store.searches(), wrap = el('historyWrap'), box = el('historyList');
+    var show = list.length > 0 && searchQuery().length < 2;
+    wrap.classList.toggle('hidden', !show);
+    if (!show) return;
+    redrawKeepFocus(box, function () {
+      box.innerHTML = '';
+      list.forEach(function (q) {
+        var b = make('button', 'pill focusable', q);
+        b.onclick = function () {
+          el('searchInput').value = q;
+          Store.addSearch(q);
+          renderHistory();
+          runSearch();
+        };
+        box.appendChild(b);
+      });
+      var clear = make('button', 'pill muted-pill focusable', I18n.t('clearHistory'));
+      clear.onclick = function () {
+        Store.clearSearches();
+        renderHistory();
+        Nav.focus(el('searchInput'));
+      };
+      box.appendChild(clear);
+    });
+  }
   function runSearch() {
-    var q = el('searchInput').value.replace(/^\s+|\s+$/g, ''), grid = el('searchGrid'), note = el('searchNote');
+    var q = searchQuery(), grid = el('searchGrid'), note = el('searchNote');
     var my = ++searchSeq;
     if (searchXhr) { try { searchXhr.abort(); } catch (e) {} }
-    if (q.length < 2) { grid.innerHTML = ''; note.textContent = I18n.t('searchHint'); return; }
+    renderHistory();
+    if (q.length < 2) { grid.innerHTML = ''; note.textContent = Store.searches().length ? '' : I18n.t('searchHint'); return; }
     note.textContent = I18n.t('loading');
     searchXhr = Api.search(q, function (err, list) {
       if (my !== searchSeq) return;
@@ -299,13 +328,16 @@
     go('search');
     var input = el('searchInput');
     input.placeholder = I18n.t('searchPlaceholder');
-    if (!el('searchGrid').children.length) el('searchNote').textContent = I18n.t('searchHint');
+    renderHistory();
+    if (!el('searchGrid').children.length) el('searchNote').textContent = Store.searches().length ? '' : I18n.t('searchHint');
+    // Klavyeyi kendiliğinden açma: Samsung klavyesi geç açılıyor ve son aramalardan birini seçerken
+    // önce kapatmak gerekiyordu. Kutu odakta bekler; OK ile klavye açılır, ↓ ile son aramalara inilir.
     Nav.focus(input);
-    setTimeout(function () { input.focus(); }, 50);
   }
 
   /* ---------- Kanal ---------- */
   function openChannel(slug, focusLive) {
+    if (current === 'search') Store.addSearch(searchQuery());  // aramadan bir kanala girildiyse aramayı kaydet
     go('channel');
     var my = ++chan.seq;
     chan.slug = slug; chan.data = null; chan.vods = [];
@@ -401,7 +433,7 @@
 
     var input = el('searchInput');
     if (current === 'search' && document.activeElement === input) {
-      if (code === K.ENTER || code === K.IME_DONE) { input.blur(); clearTimeout(searchTimer); runSearch(); Nav.move('down'); e.preventDefault(); }
+      if (code === K.ENTER || code === K.IME_DONE) { input.blur(); clearTimeout(searchTimer); Store.addSearch(searchQuery()); runSearch(); Nav.move('down'); e.preventDefault(); }
       else if (code === K.DOWN) { input.blur(); Nav.move('down'); e.preventDefault(); }
       else if (code === K.IME_CANCEL || code === K.ESC || code === K.BACK) { input.blur(); e.preventDefault(); }
       return;

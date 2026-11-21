@@ -25,6 +25,18 @@ var Store = (function () {
   }
   function unfollow(slug) { write('kickizle.follows', follows().filter(function (x) { return x.slug !== slug; })); }
 
+  /* Arama geçmişi: en yeni başta, en fazla 10, büyük/küçük harf farkı yok sayılır. */
+  function searches() { return read('kickizle.searches', []); }
+  function addSearch(q) {
+    q = String(q || '').replace(/^\s+|\s+$/g, '');
+    if (q.length < 2) return;
+    var low = q.toLowerCase();
+    var list = searches().filter(function (x) { return x.toLowerCase() !== low; });
+    list.unshift(q);
+    write('kickizle.searches', list.slice(0, 10));
+  }
+  function clearSearches() { write('kickizle.searches', []); }
+
   function resumeAll() { return read('kickizle.resume', {}); }
   function getResume(id) { var r = resumeAll()[id]; return r || null; }
   function setResume(id, time, duration) {
@@ -41,6 +53,7 @@ var Store = (function () {
     get: read, set: write,
     recent: recent, addRecent: addRecent,
     follows: follows, isFollowed: isFollowed, follow: follow, unfollow: unfollow,
+    searches: searches, addSearch: addSearch, clearSearches: clearSearches,
     getResume: getResume, setResume: setResume
   };
 }());

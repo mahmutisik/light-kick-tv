@@ -31,6 +31,9 @@ button { font: inherit; color: inherit; background: none; border: 0; outline: no
 .pill.active { background: #2a3a25; color: #53fc18; }
 .pill.icon { padding: 10px 16px; line-height: 0; }
 .chips .pill:first-child { margin-left: 0; }
+.chips.wrap { flex-wrap: wrap; }
+.chips.wrap .pill { margin: 0 18px 18px 0; }
+.pill.muted-pill { color: #9aa5ab; }
 
 /* Ayarlar: takip listesi satırları */
 .follow-row { display: flex; align-items: center; margin-bottom: 18px; }
