@@ -27,6 +27,22 @@ var Api = (function () {
   }
   function get(url, cb) { return request('GET', url, null, cb); }
 
+  /* Short-lived response cache: re-opening a channel within 2 minutes is instant and costs no
+     network or parsing. `fresh` skips it (e.g. right before playing, the stream token must be new). */
+  var cache = {}, CACHE_MS = 120000;
+  function cachedGet(url, cb, fresh) {
+    var now = Date.now(), hit = cache[url];
+    if (!fresh && hit && now - hit.at < CACHE_MS) { setTimeout(function () { cb(null, hit.data); }, 0); return null; }
+    return get(url, function (err, data) {
+      if (!err) {
+        cache[url] = { at: Date.now(), data: data };
+        var keys = Object.keys(cache);
+        if (keys.length > 40) keys.forEach(function (k) { if (Date.now() - cache[k].at >= CACHE_MS) delete cache[k]; });
+      }
+      cb(err, data);
+    });
+  }
+
   function pickImage(img, wanted) {
     if (!img) return '';
     if (typeof img === 'string') return img;
@@ -43,19 +59,24 @@ var Api = (function () {
   }
   function userPic(u) { return (u && (u.profile_pic || u.profilepic)) || ''; }
 
-  /* Belirli bir dildeki canlı yayınlar (sayfalı). */
-  function livestreams(lang, page, cb) {
-    get('https://kick.com/stream/livestreams/' + lang + '?limit=24&sort=featured&page=' + (page || 1), function (err, data) {
+  /* Live streams for a filter: { langs: ['tr','en'] (empty = all languages), sort: 'featured'|'viewers' }.
+     Uses web.kick.com's list, which (unlike kick.com/stream/livestreams) honours the language when
+     sorting by viewers and accepts several languages. Paged with an opaque `after` cursor. */
+  function livestreams(filter, cursor, cb) {
+    var url = 'https://web.kick.com/api/v1/livestreams?limit=24&sort=' + (filter.sort === 'viewers' ? 'viewer_count_desc' : 'featured');
+    (filter.langs || []).forEach(function (l) { url += '&language=' + encodeURIComponent(l); });
+    if (cursor) url += '&after=' + encodeURIComponent(cursor);
+    get(url, function (err, d) {
       if (err) { cb(err); return; }
-      var list = (data && data.data) || [];
+      var data = (d && d.data) || {}, list = data.livestreams || [];
       cb(null, {
-        hasMore: !!(data && data.next_page_url),
+        next: (data.pagination && data.pagination.next_cursor) || null,
         items: list.map(function (x) {
-          var ch = x.channel || {}, u = ch.user || {};
+          var ch = x.channel || {};
           return {
-            slug: ch.slug, name: u.username || ch.slug, pic: userPic(u),
-            title: x.session_title || '', viewers: x.viewer_count || x.viewers || 0,
-            category: x.categories && x.categories[0] ? x.categories[0].name : '',
+            slug: ch.slug, name: ch.username || ch.slug, pic: ch.profile_pic || '',
+            title: x.title || '', viewers: x.viewer_count || 0,
+            category: x.category ? x.category.name : '',
             thumb: pickImage(x.thumbnail, 480)
           };
         }).filter(function (x) { return !!x.slug; })
@@ -63,8 +84,8 @@ var Api = (function () {
     });
   }
 
-  function channel(slug, cb) {
-    get('https://kick.com/api/v2/channels/' + encodeURIComponent(slug), function (err, d) {
+  function channel(slug, cb, fresh) {
+    cachedGet('https://kick.com/api/v2/channels/' + encodeURIComponent(slug), function (err, d) {
       if (err) { cb(err); return; }
       var u = d.user || {}, ls = d.livestream || null;
       cb(null, {
@@ -78,7 +99,7 @@ var Api = (function () {
         thumb: ls ? pickImage(ls.thumbnail, 480) : '',
         category: ls && ls.categories && ls.categories[0] ? ls.categories[0].name : ''
       });
-    });
+    }, fresh);
   }
 
   /* Sadece canlı yayın bilgisi (küçük yanıt). Çevrimdışıysa null döner. */
@@ -95,7 +116,7 @@ var Api = (function () {
   }
 
   function videos(slug, cb) {
-    get('https://kick.com/api/v2/channels/' + encodeURIComponent(slug) + '/videos', function (err, d) {
+    cachedGet('https://kick.com/api/v2/channels/' + encodeURIComponent(slug) + '/videos', function (err, d) {
       if (err) { cb(err); return; }
       var list = Array.isArray(d) ? d : (d && d.data) || [];
       cb(null, list.map(function (x) {

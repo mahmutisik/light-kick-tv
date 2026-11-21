@@ -30,6 +30,17 @@ button { font: inherit; color: inherit; background: none; border: 0; outline: no
 }
 .pill.active { background: #2a3a25; color: #53fc18; }
 .pill.icon { padding: 10px 16px; line-height: 0; }
+#btnFilter { display: inline-flex; align-items: center; }
+#btnFilter svg { margin-right: 12px; flex-shrink: 0; }
+#filterSummary { max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Filter panel (over the home screen) */
+.layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: rgba(0,0,0,.7); z-index: 20; display: flex; align-items: center; justify-content: center; }
+.panel { width: 1240px; padding: 44px 52px 48px; background: #101415; border: 2px solid #2a3236; border-radius: 28px; }
+.panel h3 { font-size: 40px; margin-bottom: 26px; }
+.panel-label { font-size: 26px; color: #9aa5ab; margin: 18px 0 16px; }
+.panel-hint { font-size: 22px; color: #9aa5ab; margin: 10px 0 26px; min-height: 30px; }
+.panel .actions { margin-top: 0; }
 .chips .pill:first-child { margin-left: 0; }
 .chips.wrap { flex-wrap: wrap; }
 .chips.wrap .pill { margin: 0 18px 18px 0; }

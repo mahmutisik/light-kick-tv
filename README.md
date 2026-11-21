@@ -18,7 +18,8 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
 
 ## Features
 
-- **Live streams**: featured streams in English or Turkish, loading more as you scroll
+- **Live streams** with a **filter**: one or more stream languages (or all), sorted by Recommended or
+  Most viewers. Changes apply only when you press Apply, so browsing the options costs nothing.
 - **Search** channels using Kick's own search, with your **recent searches** under the search box
 - **Channel page** with the live stream and the full list of **past broadcasts**
 - **Seeking that respects the TV**: pressing ← / → pauses the video and shows the target frame;
@@ -30,8 +31,10 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
 - **Follow channels** without a Kick account. Followed channels that are live appear at the top of
   the home screen.
 - **Recently watched** channels
-- **Settings** (⚙): manage followed channels, switch the interface language (English / Türkçe)
-- Interface in **English** by default; TVs set to Turkish start in Turkish
+- **Settings** (⚙): manage followed channels, switch the interface language
+- Interface in **10 languages**: English, Türkçe, Español, العربية, Português, Deutsch, Français,
+  Русский, Polski, Italiano. The app starts in the TV's menu language when it's one of these,
+  otherwise in English. Numbers and dates follow the chosen language.
 
 ## Install on your TV
 
@@ -61,9 +64,12 @@ your followed channels, resume points and settings are kept.
 | Menus | Back | Previous screen (press twice on the home screen to exit) |
 | Player | ↑ | Quality menu |
 | Player (live) | ↓ | Show / hide chat |
-| Player (past broadcast) | ← → / ⏪ ⏩ | Pause and seek: 10 s steps, growing to 30 s, 1 min and 3 min while held. The frame appears 2 s after you let go. |
+| Player (past broadcast) | ← → / ⏪ ⏩ | Pause and seek: 10 s steps, growing to 30 s, 1 min and 3 min while held. The frame appears 1 s after you let go. |
 | Player (past broadcast) | OK / ⏯ | Play / pause |
 | Player | Back / ⏹ | Leave the player |
+
+While the on-screen info is hidden, the first press of ↑, ← or → only shows it, so a stray press
+never seeks or opens a menu. The dedicated ⏪ ⏩ ⏯ buttons and OK always act immediately.
 
 ## Performance
 
@@ -80,6 +86,13 @@ TV web engines are far weaker than a desktop browser, so the player is deliberat
   info is removed from the page (not just hidden) while it's off.
 - **Batched chat**: messages are added twice a second and capped at 50.
 - **Bounded lists** and small thumbnails, so long browsing sessions don't fill the TV's memory.
+- **Fast startup**: the 600 KB video library (hls.js) isn't loaded at launch. It starts loading in
+  the background when you open a channel, so it's ready by the time you press play.
+- **Lazy thumbnails**: images load only when a card gets within about one screen of view
+  (16 instead of 24 on the first home screen; the rest as you scroll).
+- **Channel cache**: re-opening a channel within 2 minutes is instant and makes no network
+  requests. Starting a live stream always fetches a fresh stream link.
+- **Cheap navigation**: each arrow press reads every item's position once.
 
 ## Privacy
 
@@ -121,7 +134,7 @@ app/                 The TV app (packaged into the .wgt)
   js/chat.js         Read-only live chat
   js/nav.js          Remote-control (spatial) navigation
   js/store.js        Local storage: follows, recents, resume points
-  js/i18n.js         English / Turkish texts
+  js/i18n.js         Interface texts in 10 languages
   lib/hls.min.js     hls.js 1.7.3
 dev/server.js        Local dev server and proxy
 scripts/build.py     .wgt packager

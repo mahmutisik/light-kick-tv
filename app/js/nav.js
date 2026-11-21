@@ -6,7 +6,7 @@ var Nav = (function () {
     PLAY: 415, PAUSE: 19, PLAYPAUSE: 10252, STOP: 413, FF: 417, RW: 412, SPACE: 32,
     IME_DONE: 65376, IME_CANCEL: 65385
   };
-  var scope = null, focused = null;
+  var scope = null, focused = null, focusHook = null;
 
   function registerKeys() {
     try {
@@ -18,17 +18,18 @@ var Nav = (function () {
     } catch (e) {}
   }
 
-  function visible(el) {
-    if (!el || el.offsetParent === null) return false;
-    var r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0;
-  }
+  /* One pass: each focusable's position is read exactly once per key press. Hidden elements
+     (display:none screens, hidden sections) have an empty rect and are skipped. */
   function candidates() {
     if (!scope) return [];
     var all = scope.querySelectorAll('.focusable'), out = [];
-    for (var i = 0; i < all.length; i++) if (visible(all[i])) out.push(all[i]);
+    for (var i = 0; i < all.length; i++) {
+      var r = all[i].getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) out.push({ el: all[i], r: r });
+    }
     return out;
   }
+  function indexOfEl(list, el) { for (var i = 0; i < list.length; i++) if (list[i].el === el) return i; return -1; }
 
   function scrollIntoView(el) {
     var sc = el.parentNode;
@@ -52,18 +53,19 @@ var Nav = (function () {
     el.classList.add('focused');
     scrollIntoView(el);
     if (el.onfocusnav) el.onfocusnav();
+    if (focusHook) focusHook(el);
   }
 
   function move(dir) {
     var list = candidates();
     if (!list.length) return false;
-    if (!focused || list.indexOf(focused) < 0) { focus(list[0]); return true; }
-    var cr = focused.getBoundingClientRect(), cx = cr.left + cr.width / 2, cy = cr.top + cr.height / 2;
+    var at = focused ? indexOfEl(list, focused) : -1;
+    if (at < 0) { focus(list[0].el); return true; }
+    var cr = list[at].r, cx = cr.left + cr.width / 2, cy = cr.top + cr.height / 2;
     var vertical = dir === 'up' || dir === 'down', found = [];
     for (var i = 0; i < list.length; i++) {
-      var el = list[i];
-      if (el === focused) continue;
-      var r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      if (i === at) continue;
+      var el = list[i].el, r = list[i].r, x = r.left + r.width / 2, y = r.top + r.height / 2;
       var main, cross, overlap;
       if (dir === 'left') { if (r.right > cr.left + 4) continue; main = cr.left - r.right; cross = Math.abs(y - cy); }
       else if (dir === 'right') { if (r.left < cr.right - 4) continue; main = r.left - cr.right; cross = Math.abs(y - cy); }
@@ -99,9 +101,9 @@ var Nav = (function () {
   function setScope(el, preferred) {
     scope = el;
     var list = candidates();
-    if (preferred && list.indexOf(preferred) >= 0) focus(preferred);
-    else if (focused && list.indexOf(focused) >= 0) focus(focused);
-    else if (list.length) focus(list[0]);
+    if (preferred && indexOfEl(list, preferred) >= 0) focus(preferred);
+    else if (focused && indexOfEl(list, focused) >= 0) focus(focused);
+    else if (list.length) focus(list[0].el);
     else focused = null;
   }
 
@@ -109,6 +111,7 @@ var Nav = (function () {
 
   return {
     KEY: KEY, registerKeys: registerKeys, move: move, focus: focus, setScope: setScope,
-    getFocused: function () { return focused; }, isBack: isBack
+    getFocused: function () { return focused; }, isBack: isBack,
+    onFocus: function (fn) { focusHook = fn; }
   };
 }());

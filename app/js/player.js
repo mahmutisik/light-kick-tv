@@ -6,8 +6,9 @@ var Player = (function () {
   var osdTimer = null, seekTimer = null, saveTimer = null, retryTimer = null;
   var pendingSeek = null, lastSeekAt = 0, seekStreak = 0, retries = 0;
   var menuOpen = false, chatOn = false, levels = [];
-  var loadingStopped = false, frameOnly = false, lastProgressAt = 0;
-  var SEEK_SETTLE_MS = 2000;  // sarmayı bıraktıktan sonra karenin yükleneceği bekleme süresi
+  var loadingStopped = false, frameOnly = false, lastProgressAt = 0, waitTimer = null;
+  var SEEK_SETTLE_MS = 1000;  // sarmayı bıraktıktan sonra karenin yükleneceği bekleme süresi
+  var OSD_HIDE_MS = 2500;     // oynatma sırasında bilgi çubuğunun kaybolma süresi
 
   function el(id) { return document.getElementById(id); }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
@@ -33,7 +34,7 @@ var Player = (function () {
   function showOsd(keep) {
     if (!osdVisible()) { el('osd').classList.remove('faded'); if (pendingSeek === null) updateProgress(); }
     clearTimeout(osdTimer);
-    if (!keep && !menuOpen && !(isVod() && video.paused)) osdTimer = setTimeout(function () { el('osd').classList.add('faded'); }, 4000);
+    if (!keep && !menuOpen && !(isVod() && video.paused)) osdTimer = setTimeout(function () { el('osd').classList.add('faded'); }, OSD_HIDE_MS);
   }
   function duration() {
     var d = video.duration;
@@ -73,9 +74,29 @@ var Player = (function () {
     var p = video.play();
     if (p && p['catch']) p['catch'](function () {});
   }
+  /* hls.js (~600 KB) is fetched and parsed only when it is first needed, so the app starts faster. */
+  var hlsLoading = null, loadSeq = 0;
+  function ensureHls(cb) {
+    if (window.Hls) { cb(); return; }
+    if (!hlsLoading) {
+      hlsLoading = [];
+      var s = document.createElement('script');
+      s.src = 'lib/hls.min.js';
+      s.onload = s.onerror = function () { var q = hlsLoading; hlsLoading = null; for (var i = 0; i < q.length; i++) q[i](); };
+      document.head.appendChild(s);
+    }
+    hlsLoading.push(cb);
+  }
+  /* Called when a channel page opens: likely to play soon, so warm the player up in the background. */
+  function preload() { ensureHls(function () {}); }
+
   function load(url, startAt) {
+    var my = ++loadSeq;
     destroyHls();
     clearTimeout(retryTimer);
+    ensureHls(function () { if (my === loadSeq && opts) loadNow(url, startAt); });
+  }
+  function loadNow(url, startAt) {
     if (window.Hls && Hls.isSupported()) {
       var cfg = {
         enableWorker: true, startPosition: startAt || -1,
@@ -135,7 +156,7 @@ var Player = (function () {
       if (startAt) video.currentTime = startAt;
       play();
     } else {
-      status('playError', 'HLS desteklenmiyor', true);
+      status('playError', I18n.t('hlsUnsupported'), true);
     }
   }
 
@@ -162,8 +183,13 @@ var Player = (function () {
   /* ---------- Video olayları (bir kez bağlanır) ---------- */
   function bindVideo() {
     video = el('video');
-    video.addEventListener('waiting', function () { if (opts && !video.paused) status('buffering', ''); });
-    video.addEventListener('playing', function () { retries = 0; hideStatus(); el('pauseIcon').classList.add('hidden'); showOsd(); });
+    // Show "Buffering" only if the stall lasts: brief decoder hiccups shouldn't flash a message.
+    video.addEventListener('waiting', function () {
+      clearTimeout(waitTimer);
+      waitTimer = setTimeout(function () { if (opts && !video.paused && video.readyState < 3) status('buffering', ''); }, 600);
+    });
+    video.addEventListener('canplay', function () { clearTimeout(waitTimer); });
+    video.addEventListener('playing', function () { clearTimeout(waitTimer); retries = 0; hideStatus(); el('pauseIcon').classList.add('hidden'); showOsd(); });
     video.addEventListener('play', function () { frameOnly = false; el('pauseIcon').classList.add('hidden'); resumeLoading(); });
     video.addEventListener('pause', function () {
       if (!opts || video.ended) return;
@@ -204,22 +230,52 @@ var Player = (function () {
     pendingSeek = Math.max(0, Math.min(d ? d - 3 : base + step, base + dir * step));
     // Sarmaya başlayınca yayını duraklat: sarma sırasında video çözülmesin, boşuna indirilmesin.
     if (!video.paused) video.pause();
+    // Seeking again while the previous spot's frame is still downloading: cancel that download,
+    // the viewer has moved on. stopLoad() aborts the in-flight request.
+    if (frameOnly) {
+      frameOnly = false;
+      stopLoading();
+      hideStatus();
+      el('pauseIcon').classList.remove('hidden');
+    }
     updateProgress(pendingSeek);
     showOsd(true);
     clearTimeout(seekTimer);
     // Tuşa basmayı bırakıp SEEK_SETTLE_MS beklenince o noktanın tek karesini getir; OK ile oradan devam edilir.
     seekTimer = setTimeout(function () {
       if (pendingSeek === null) return;
+      if (!video.paused) { commitSeek(); return; }  // playback already resumed: never use frame-only mode
       var target = pendingSeek;
       pendingSeek = null;
       if (hls) {
         frameOnly = true;
         setFrameBuffer(true);
-        if (!isBuffered(target)) { loadingStopped = false; hls.startLoad(target); }
+        if (!isBuffered(target)) {
+          loadingStopped = false;
+          hls.startLoad(target);
+          // The frame needs a download: show a spinner instead of the pause icon until it arrives.
+          el('pauseIcon').classList.add('hidden');
+          status('buffering', '');
+        }
       }
       video.currentTime = target;
       updateProgress();
     }, SEEK_SETTLE_MS);
+  }
+  /* Apply a seek that is still waiting for the settle delay, right now and with normal buffering.
+     Used when the viewer presses play before the delay ends, so playback starts at the target
+     instead of playing a moment from the old position first. */
+  function commitSeek() {
+    if (pendingSeek === null) return false;
+    clearTimeout(seekTimer);
+    var target = pendingSeek;
+    pendingSeek = null;
+    frameOnly = false;
+    setFrameBuffer(false);
+    if (hls && loadingStopped) { loadingStopped = false; hls.startLoad(target); }
+    video.currentTime = target;
+    updateProgress();
+    return true;
   }
 
   /* ---------- Kalite menüsü ---------- */
@@ -300,9 +356,12 @@ var Player = (function () {
   }
 
   function stop() {
+    loadSeq++;
     if (!opts) return;
-    if (isVod() && video.currentTime > 0) Store.setResume(opts.vodId, video.currentTime, duration());
-    clearInterval(saveTimer); clearTimeout(seekTimer); clearTimeout(osdTimer); clearTimeout(retryTimer);
+    var at = pendingSeek !== null ? pendingSeek : video.currentTime;  // leaving mid-seek keeps the target
+    if (isVod() && at > 0) Store.setResume(opts.vodId, at, duration());
+    pendingSeek = null;
+    clearInterval(saveTimer); clearTimeout(seekTimer); clearTimeout(osdTimer); clearTimeout(retryTimer); clearTimeout(waitTimer);
     Chat.disconnect();
     destroyHls();
     try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
@@ -314,6 +373,7 @@ var Player = (function () {
 
   function togglePause() {
     if (!isVod()) { if (video.paused) play(); return; }
+    if (commitSeek()) { play(); return; }
     if (video.paused) play(); else video.pause();
   }
 
@@ -326,14 +386,18 @@ var Player = (function () {
       else if (Nav.isBack(code)) closeMenu();
       return true;
     }
+    // Bilgi çubuğu gizliyken ↑ ← → ilk basışta sadece çubuğu açar; işlem ikinci basışta yapılır.
+    // (Yanlışlıkla sarma/duraklatma ya da kalite menüsü açılmasın. ⏪ ⏩ ⏯ ve OK her zaman doğrudan çalışır.)
+    var wasHidden = !osdVisible();
     showOsd();
+    if (wasHidden && (code === K.UP || code === K.LEFT || code === K.RIGHT)) return true;
     switch (code) {
       case K.UP: openMenu(); break;
       case K.DOWN: toggleChat(); break;
       case K.LEFT: case K.RW: seekBy(-1); break;
       case K.RIGHT: case K.FF: seekBy(1); break;
       case K.ENTER: case K.PLAYPAUSE: case K.SPACE: togglePause(); break;
-      case K.PLAY: play(); break;
+      case K.PLAY: commitSeek(); play(); break;
       case K.PAUSE: if (isVod()) video.pause(); break;
       case K.STOP: exit(); break;
       default: if (Nav.isBack(code)) exit(); else return false;
@@ -350,5 +414,5 @@ var Player = (function () {
     toastTimer = setTimeout(function () { t.classList.add('hidden'); }, 3500);
   }
 
-  return { open: open, stop: stop, handleKey: handleKey, pauseForBackground: pauseForBackground, toast: toast, isOpen: function () { return !!opts; } };
+  return { open: open, stop: stop, preload: preload, handleKey: handleKey, pauseForBackground: pauseForBackground, toast: toast, isOpen: function () { return !!opts; } };
 }());

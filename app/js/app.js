@@ -3,7 +3,21 @@
   'use strict';
   var K = Nav.KEY;
   var stack = [], current = null, lastBackAt = 0;
-  var home = { lang: Store.get('kickizle.lang', I18n.getLang() === 'tr' ? 'tr' : 'en'), page: 1, items: [], hasMore: false, loading: false, seq: 0 };
+  // Stream languages offered in the filter (Kick language codes, shown in their own language).
+  var LANGS = I18n.languages();
+  function loadFilter() {
+    var f = Store.get('kickizle.filter', null);
+    if (!f || !f.langs) {
+      var old = Store.get('kickizle.lang', null);  // from the old Turkish/English tabs
+      f = { langs: [old || I18n.getLang()], sort: 'featured' };
+    }
+    var known = LANGS.map(function (l) { return l.c; });
+    f.langs = f.langs.filter(function (c) { return known.indexOf(c) >= 0; });
+    if (f.sort !== 'viewers') f.sort = 'featured';
+    return f;
+  }
+  var home = { filter: loadFilter(), cursor: null, items: [], hasMore: false, loading: false, seq: 0 };
+  var draft = null, filterOpen = false;
   var chan = { slug: null, data: null, vods: [], seq: 0 };
   var searchSeq = 0, searchTimer = null, searchXhr = null;
   var followCache = { at: 0, key: '', items: [] }, followSeq = 0;
@@ -15,7 +29,35 @@
     if (text !== undefined) n.textContent = text;
     return n;
   }
-  function bg(node, url) { if (url) node.style.backgroundImage = 'url("' + String(url).replace(/"/g, '%22') + '")'; }
+  /* Lazy images: cards only remember their image URL (data-bg) and load it once they come near the
+     visible part of their scroll area: up to ~1 screen below and a little above. Checked after each
+     list update and each focus move, so it needs no IntersectionObserver and works on any engine. */
+  function bg(node, url) { if (url) node.setAttribute('data-bg', String(url)); }
+  function loadBg(node) {
+    var u = node.getAttribute('data-bg');
+    if (!u) return;
+    node.style.backgroundImage = 'url("' + u.replace(/"/g, '%22') + '")';
+    node.removeAttribute('data-bg');
+  }
+  function scrollerOf(node) {
+    while (node && node !== document && !(node.classList && node.classList.contains('scroller'))) node = node.parentNode;
+    return node && node !== document ? node : null;
+  }
+  function checkLazy(sc) {
+    if (!sc) return;
+    var sr = sc.getBoundingClientRect();
+    if (!sr.height) return;  // screen not visible yet; checked again when it is shown
+    var nodes = sc.querySelectorAll('[data-bg]');
+    for (var i = 0; i < nodes.length; i++) {
+      var r = nodes[i].getBoundingClientRect();
+      if (r.height && r.bottom >= sr.top - 300 && r.top <= sr.bottom + 950) loadBg(nodes[i]);
+    }
+  }
+  function observeImages(container) {
+    var sc = scrollerOf(container);
+    if (sc) checkLazy(sc);
+    else { var nodes = container.querySelectorAll('[data-bg]'); for (var i = 0; i < nodes.length; i++) loadBg(nodes[i]); }
+  }
   function avatar(pic, name) {
     var av = make('span', 'avatar');
     if (pic) bg(av, pic); else { av.textContent = String(name || '?').charAt(0).toUpperCase(); av.className += ' initial'; }
@@ -28,6 +70,8 @@
     for (var i = 0; i < screens.length; i++) screens[i].classList.toggle('hidden', screens[i].id !== id);
     current = id;
     Nav.setScope(el(id), preferred);
+    var scs = el(id).querySelectorAll('.scroller');
+    for (var j = 0; j < scs.length; j++) checkLazy(scs[j]);
   }
   function go(id) {
     if (current) stack.push({ id: current, focus: Nav.getFocused() });
@@ -110,7 +154,7 @@
     if (days <= 0) return I18n.t('today');
     if (days === 1) return I18n.t('yesterday');
     if (days < 7) return I18n.t('daysAgo', { n: days });
-    try { return d.toLocaleDateString(I18n.getLang() === 'tr' ? 'tr-TR' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }); }
+    try { return d.toLocaleDateString(I18n.locale(), { day: 'numeric', month: 'short', year: 'numeric' }); }
     catch (e) { return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear(); }
   }
   function fmtDur(s) {
@@ -158,11 +202,67 @@
       chip.onclick = function () { openChannel(x.slug, false); };
       box.appendChild(chip);
     });
+    observeImages(box);
+  }
+  function langName(c) { for (var i = 0; i < LANGS.length; i++) if (LANGS[i].c === c) return LANGS[i].n; return c; }
+  function filterSummary(f) {
+    var langs = !f.langs.length ? I18n.t('allLangsShort')
+      : f.langs.length <= 2 ? f.langs.map(langName).join(', ')
+      : langName(f.langs[0]) + ', ' + langName(f.langs[1]) + ' +' + (f.langs.length - 2);
+    return langs + '  ·  ' + I18n.t(f.sort === 'viewers' ? 'sortViewers' : 'sortFeatured');
   }
   function renderHomeHeader() {
-    var tabs = document.querySelectorAll('.lang-tab');
-    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i].getAttribute('data-lang') === home.lang);
-    el('liveTitle').textContent = I18n.t('liveNow', { lang: I18n.t(home.lang === 'tr' ? 'langNameTr' : 'langNameEn') });
+    el('filterSummary').textContent = filterSummary(home.filter);
+    el('liveTitle').textContent = I18n.t('liveStreams') + '  ·  ' + filterSummary(home.filter);
+  }
+
+  /* ---------- Stream filter ----------
+     The panel edits a copy (draft). Nothing is fetched while choosing; "Apply" reloads the list
+     once, and only if something actually changed. Back / "Cancel" throws the draft away. */
+  function openFilter() {
+    draft = { langs: home.filter.langs.slice(), sort: home.filter.sort };
+    filterOpen = true;
+    renderFilter();
+    el('filterLayer').classList.remove('hidden');
+    Nav.setScope(el('filterLayer'), el('filterLangs').querySelector('.active') || null);
+  }
+  function renderFilter() {
+    var langsBox = el('filterLangs'), sortBox = el('filterSort');
+    function chip(label, active, onClick) {
+      var b = make('button', 'pill focusable' + (active ? ' active' : ''), (active ? '\u2713  ' : '') + label);
+      b.onclick = function () { onClick(); renderFilter(); };
+      return b;
+    }
+    redrawKeepFocus(langsBox, function () {
+      langsBox.innerHTML = '';
+      langsBox.appendChild(chip(I18n.t('allLanguages'), !draft.langs.length, function () { draft.langs = []; }));
+      LANGS.forEach(function (l) {
+        langsBox.appendChild(chip(l.n, draft.langs.indexOf(l.c) >= 0, function () {
+          var i = draft.langs.indexOf(l.c);
+          if (i >= 0) draft.langs.splice(i, 1); else draft.langs.push(l.c);
+        }));
+      });
+    });
+    redrawKeepFocus(sortBox, function () {
+      sortBox.innerHTML = '';
+      sortBox.appendChild(chip(I18n.t('sortFeatured'), draft.sort === 'featured', function () { draft.sort = 'featured'; }));
+      sortBox.appendChild(chip(I18n.t('sortViewers'), draft.sort === 'viewers', function () { draft.sort = 'viewers'; }));
+    });
+    el('filterHint').textContent = !draft.langs.length && draft.sort === 'featured' ? I18n.t('featuredAllNote') : I18n.t('filterHint');
+  }
+  function closeFilter(apply) {
+    filterOpen = false;
+    el('filterLayer').classList.add('hidden');
+    var cur = home.filter, next = draft;
+    draft = null;
+    var changed = apply && (next.sort !== cur.sort || next.langs.slice().sort().join() !== cur.langs.slice().sort().join());
+    if (changed) {
+      home.filter = next;
+      Store.set('kickizle.filter', next);
+      renderHomeHeader();
+      loadLive(true);
+    }
+    Nav.setScope(el('home'), el('btnFilter'));
   }
 
   /* Takip edilen kanallardan canlı olanlar (en fazla 4 istek aynı anda, 1 dk önbellek). */
@@ -202,6 +302,7 @@
       grid.innerHTML = '';
       items.forEach(function (x) { grid.appendChild(liveCard(x)); });
     });
+    observeImages(grid);
     note.textContent = items.length ? '' : I18n.t('noFollowedLive');
   }
 
@@ -212,8 +313,15 @@
     Nav.setScope(el('settings'));
   }
   function renderSettings() {
-    var btns = document.querySelectorAll('.ui-lang');
-    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].getAttribute('data-ui') === I18n.getLang());
+    var langBox = el('uiLangs');
+    redrawKeepFocus(langBox, function () {
+      langBox.innerHTML = '';
+      I18n.languages().forEach(function (l) {
+        var on = l.c === I18n.getLang(), b = make('button', 'pill focusable' + (on ? ' active' : ''), (on ? '\u2713  ' : '') + l.n);
+        b.onclick = function () { setUiLang(l.c); };
+        langBox.appendChild(b);
+      });
+    });
     var box = el('followList'), list = Store.follows();
     redrawKeepFocus(box, function () {
       box.innerHTML = '';
@@ -234,6 +342,7 @@
         box.appendChild(row);
       });
     });
+    observeImages(box);
     // Silinen satırın yerine bir sonrakinin "Kaldır" düğmesine odaklan.
     var f = Nav.getFocused();
     if (current === 'settings' && (!f || !document.body.contains(f))) Nav.setScope(el('settings'));
@@ -250,10 +359,10 @@
   function loadLive(reset) {
     if (home.loading && !reset) return;
     var my = ++home.seq, grid = el('liveGrid'), note = el('liveNote');
-    if (reset) { home.page = 1; home.items = []; grid.innerHTML = ''; el('homeScroll').scrollTop = 0; }
+    if (reset) { home.cursor = null; home.items = []; grid.innerHTML = ''; el('homeScroll').scrollTop = 0; }
     home.loading = true;
     note.innerHTML = ''; note.textContent = I18n.t('loading');
-    Api.livestreams(home.lang, home.page, function (err, res) {
+    Api.livestreams(home.filter, home.cursor, function (err, res) {
       if (my !== home.seq) return;
       home.loading = false;
       note.textContent = '';
@@ -262,8 +371,8 @@
       home.items.forEach(function (x) { seen[x.slug] = true; });
       var fresh = res.items.filter(function (x) { return !seen[x.slug]; });
       home.items = home.items.concat(fresh);
-      home.hasMore = res.hasMore && fresh.length > 0 && home.items.length < 96;  // çok kart TV belleğini doldurur
-      home.page++;
+      home.cursor = res.next;
+      home.hasMore = !!res.next && fresh.length > 0 && home.items.length < 96;  // çok kart TV belleğini doldurur
       fresh.forEach(function (x) {
         var card = liveCard(x);
         card.onfocusnav = function () {
@@ -272,6 +381,7 @@
         };
         grid.appendChild(card);
       });
+      observeImages(grid);
       if (!home.items.length) note.textContent = I18n.t('nothingLive');
       if (current === 'home' && !Nav.getFocused()) Nav.setScope(el('home'));
     });
@@ -321,6 +431,7 @@
       if (!list.length) { note.textContent = I18n.t('noResults'); return; }
       list.sort(function (a, b) { return (b.live - a.live) || (b.followers - a.followers); });
       list.forEach(function (x) { grid.appendChild(channelCard(x)); });
+      observeImages(grid);
       if (current === 'search' && document.activeElement !== el('searchInput')) Nav.focus(grid.children[0]);
     });
   }
@@ -339,6 +450,7 @@
   function openChannel(slug, focusLive) {
     if (current === 'search') Store.addSearch(searchQuery());  // aramadan bir kanala girildiyse aramayı kaydet
     go('channel');
+    Player.preload();  // a stream is likely next: fetch the player library in the background
     var my = ++chan.seq;
     chan.slug = slug; chan.data = null; chan.vods = [];
     el('channelScroll').scrollTop = 0;
@@ -378,6 +490,7 @@
       if (err) { el('vodNote').appendChild(retryButton(function () { back(); openChannel(slug, focusLive); })); done(); return; }
       chan.vods = vods;
       vods.forEach(function (v) { el('vodGrid').appendChild(vodCard(v)); });
+      observeImages(el('vodGrid'));
       if (!vods.length) el('vodNote').textContent = I18n.t('noVods');
       done();
     });
@@ -399,6 +512,7 @@
     var grid = el('vodGrid'), f = Nav.getFocused(), idx = Array.prototype.indexOf.call(grid.children, f);
     grid.innerHTML = '';
     chan.vods.forEach(function (v) { grid.appendChild(vodCard(v)); });
+    observeImages(grid);
     if (idx >= 0 && grid.children[idx]) Nav.setScope(el('channel'), grid.children[idx]);
   }
 
@@ -416,7 +530,7 @@
         kind: 'live', url: ch.playbackUrl, channelName: ch.name, title: ch.title,
         channelId: ch.id, chatroomId: ch.chatroomId
       }, back);
-    });
+    }, true);
   }
   function playVod(v) {
     go('player');
@@ -430,6 +544,17 @@
   function onKey(e) {
     var code = e.keyCode;
     if (current === 'player') { if (Player.handleKey(code)) e.preventDefault(); return; }
+    if (filterOpen) {
+      if (code === K.LEFT) Nav.move('left');
+      else if (code === K.RIGHT) Nav.move('right');
+      else if (code === K.UP) Nav.move('up');
+      else if (code === K.DOWN) Nav.move('down');
+      else if (code === K.ENTER) { var ff = Nav.getFocused(); if (ff) ff.click(); }
+      else if (Nav.isBack(code)) closeFilter(false);
+      else return;
+      e.preventDefault();
+      return;
+    }
 
     var input = el('searchInput');
     if (current === 'search' && document.activeElement === input) {
@@ -454,19 +579,17 @@
   /* ---------- Başlangıç ---------- */
   function init() {
     Nav.registerKeys();
+    Nav.onFocus(function (node) { checkLazy(scrollerOf(node)); });
     I18n.apply();
     renderHomeHeader();
     renderRecent();
     renderFollowed(true);
 
     el('btnSearch').onclick = openSearch;
-    var tabs = document.querySelectorAll('.lang-tab');
-    for (var i = 0; i < tabs.length; i++) tabs[i].onclick = (function (lang) {
-      return function () { if (home.lang === lang) return; home.lang = lang; Store.set('kickizle.lang', lang); renderHomeHeader(); loadLive(true); };
-    }(tabs[i].getAttribute('data-lang')));
+    el('btnFilter').onclick = openFilter;
+    el('filterApply').onclick = function () { closeFilter(true); };
+    el('filterCancel').onclick = function () { closeFilter(false); };
     el('btnSettings').onclick = openSettings;
-    var uiBtns = document.querySelectorAll('.ui-lang');
-    for (var j = 0; j < uiBtns.length; j++) uiBtns[j].onclick = (function (l) { return function () { setUiLang(l); }; }(uiBtns[j].getAttribute('data-ui')));
     el('btnWatchLive').onclick = watchLive;
     el('btnFollow').onclick = toggleFollow;
     el('searchInput').addEventListener('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 600); });
