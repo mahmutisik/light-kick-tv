@@ -93,6 +93,19 @@ TV web engines are far weaker than a desktop browser, so the player is deliberat
 - **Channel cache**: re-opening a channel within 2 minutes is instant and makes no network
   requests. Starting a live stream always fetches a fresh stream link.
 - **Cheap navigation**: each arrow press reads every item's position once.
+- **Memory while watching**: after 2 minutes in the player, the screens behind it let go of their
+  images. The home list, outdated by then, is reloaded fresh when you return; a short look keeps
+  everything as it was.
+- **Faster live start**: the stream's main playlist is fetched when a live channel page opens and a
+  fresh stream link is reused, so "Watch live" waits for fewer requests (about 1.2 s down to
+  0.7-0.9 s to the first picture in testing).
+- **Faster start**: a splash (Kick's K and LIGHT) shows while the app connects and stays until the
+  stream list is ready. If it fails or takes more than 10 s, the error appears on the splash and OK
+  retries. Connections to Kick's servers are opened as the page starts loading, before any script
+  runs, so the first list and thumbnails don't wait for connection setup. The home screen always
+  shows fresh data.
+- **Nothing runs in the background**: when you switch to another app or the TV menu, video,
+  downloads, chat and timers stop. A live stream rejoins at the live edge when you come back.
 
 ## Privacy
 
@@ -116,6 +129,9 @@ node dev/server.js        # open http://localhost:8099
 In the browser, the arrow keys, Enter and Esc (Back) behave like the remote. A desktop browser blocks
 Kick's API with CORS, so the dev server relays requests through a small local proxy. The TV doesn't
 need it: Tizen apps connect directly.
+
+To test start-up errors, open `http://localhost:8099/?simulate=offline` (Kick requests fail) or
+`?simulate=slow` (responses arrive after 12 s). This only works on the dev server.
 
 ```sh
 python scripts/build.py   # creates dist/LightKickTV.wgt (unsigned) and its .sha256

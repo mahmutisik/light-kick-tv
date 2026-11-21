@@ -5,10 +5,14 @@ var Api = (function () {
   var DEV = /^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 
   function proxied(url) { return DEV ? '/proxy?u=' + encodeURIComponent(url) : url; }
+  // Dev only: ?simulate=offline makes Kick requests fail, ?simulate=slow delays them 12 s (to test start-up errors).
+  var simulate = DEV ? ((/[?&]simulate=(offline|slow)/.exec(location.search) || [])[1] || '') : '';
 
   function request(method, url, body, callback, timeout) {
     var xhr = new XMLHttpRequest(), done = false;
     function finish(err, data) { if (done) return; done = true; callback(err, data); }
+    if (simulate === 'offline') { setTimeout(function () { finish({ status: 'network' }); }, 300); return xhr; }
+    if (simulate === 'slow') { var real = callback; callback = function (e, d) { setTimeout(function () { real(e, d); }, 12000); }; }
     try {
       xhr.open(method, proxied(url), true);
       xhr.timeout = timeout || 15000;
@@ -32,14 +36,15 @@ var Api = (function () {
   var cache = {}, CACHE_MS = 120000;
   function cachedGet(url, cb, fresh) {
     var now = Date.now(), hit = cache[url];
-    if (!fresh && hit && now - hit.at < CACHE_MS) { setTimeout(function () { cb(null, hit.data); }, 0); return null; }
+    if (!fresh && hit && now - hit.at < CACHE_MS) { setTimeout(function () { cb(null, hit.data, hit.at); }, 0); return null; }
     return get(url, function (err, data) {
+      var at = Date.now();
       if (!err) {
-        cache[url] = { at: Date.now(), data: data };
+        cache[url] = { at: at, data: data };
         var keys = Object.keys(cache);
         if (keys.length > 40) keys.forEach(function (k) { if (Date.now() - cache[k].at >= CACHE_MS) delete cache[k]; });
       }
-      cb(err, data);
+      cb(err, data, at);
     });
   }
 
@@ -85,10 +90,11 @@ var Api = (function () {
   }
 
   function channel(slug, cb, fresh) {
-    cachedGet('https://kick.com/api/v2/channels/' + encodeURIComponent(slug), function (err, d) {
+    cachedGet('https://kick.com/api/v2/channels/' + encodeURIComponent(slug), function (err, d, fetchedAt) {
       if (err) { cb(err); return; }
       var u = d.user || {}, ls = d.livestream || null;
       cb(null, {
+        fetchedAt: fetchedAt || Date.now(),
         id: d.id, slug: d.slug || slug, name: u.username || slug, pic: userPic(u),
         followers: d.followers_count || d.followersCount || 0,
         chatroomId: d.chatroom && d.chatroom.id,
@@ -166,6 +172,7 @@ var Api = (function () {
 
   return {
     DEV: DEV, proxied: proxied,
+    setSimulate: function (mode) { if (DEV) simulate = mode || ''; },
     livestreams: livestreams, channel: channel, livestream: livestream, videos: videos, search: search, chatConfig: chatConfig
   };
 }());

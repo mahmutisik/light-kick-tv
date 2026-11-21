@@ -35,7 +35,8 @@ var I18n = (function () {
       liveStreams: 'Live streams', filterTitle: 'Stream filter', streamLanguage: 'Stream language', allLanguages: 'All',
       allLangsShort: 'All languages', sortBy: 'Sort by', sortFeatured: 'Recommended', sortViewers: 'Most viewers',
       apply: 'Apply', cancel: 'Cancel', filterHint: 'Changes take effect when you press "Apply". You can pick several languages.',
-      featuredAllNote: 'Note: with "All" + "Recommended", Kick mostly recommends English streams.'
+      featuredAllNote: 'Note: with "All" + "Recommended", Kick mostly recommends English streams.',
+      startError: 'Couldn\'t load streams.', startRetry: 'Check your connection and press OK to try again.'
     },
     tr: {
       search: 'Ara', recentChannels: 'Son izlenen kanallar', loading: 'Yükleniyor…',
@@ -58,7 +59,8 @@ var I18n = (function () {
       liveStreams: 'Canlı yayınlar', filterTitle: 'Yayın filtresi', streamLanguage: 'Yayın dili', allLanguages: 'Tümü',
       allLangsShort: 'Tüm diller', sortBy: 'Sıralama', sortFeatured: 'Önerilen', sortViewers: 'En çok izlenen',
       apply: 'Uygula', cancel: 'İptal', filterHint: 'Değişiklikler "Uygula"ya basınca geçerli olur. Birden fazla dil seçebilirsin.',
-      featuredAllNote: 'Not: "Tümü" + "Önerilen" seçiliyken Kick çoğunlukla İngilizce yayınlar öneriyor.'
+      featuredAllNote: 'Not: "Tümü" + "Önerilen" seçiliyken Kick çoğunlukla İngilizce yayınlar öneriyor.',
+      startError: 'Yayınlar yüklenemedi.', startRetry: 'Bağlantınızı kontrol edin ve tekrar denemek için OK tuşuna basın.'
     },
     es: {
       search: 'Buscar', recentChannels: 'Canales vistos recientemente', loading: 'Cargando…',
@@ -81,7 +83,8 @@ var I18n = (function () {
       liveStreams: 'Directos', filterTitle: 'Filtro de emisiones', streamLanguage: 'Idioma de la emisión', allLanguages: 'Todos',
       allLangsShort: 'Todos los idiomas', sortBy: 'Ordenar por', sortFeatured: 'Recomendados', sortViewers: 'Más espectadores',
       apply: 'Aplicar', cancel: 'Cancelar', filterHint: 'Los cambios se aplican al pulsar "Aplicar". Puedes elegir varios idiomas.',
-      featuredAllNote: 'Nota: con "Todos" + "Recomendados", Kick recomienda sobre todo emisiones en inglés.'
+      featuredAllNote: 'Nota: con "Todos" + "Recomendados", Kick recomienda sobre todo emisiones en inglés.',
+      startError: 'No se pudieron cargar los directos.', startRetry: 'Comprueba la conexión y pulsa OK para reintentar.'
     },
     ar: {
       search: 'بحث', recentChannels: 'القنوات التي شاهدتها مؤخرًا', loading: 'جارٍ التحميل…',
@@ -104,7 +107,8 @@ var I18n = (function () {
       liveStreams: 'البث المباشر', filterTitle: 'تصفية البثوث', streamLanguage: 'لغة البث', allLanguages: 'الكل',
       allLangsShort: 'كل اللغات', sortBy: 'الترتيب', sortFeatured: 'المقترحة', sortViewers: 'الأكثر مشاهدة',
       apply: 'تطبيق', cancel: 'إلغاء', filterHint: 'تُطبَّق التغييرات عند الضغط على "تطبيق". يمكنك اختيار أكثر من لغة.',
-      featuredAllNote: 'ملاحظة: عند اختيار "الكل" + "المقترحة" يقترح Kick غالبًا بثوثًا باللغة الإنجليزية.'
+      featuredAllNote: 'ملاحظة: عند اختيار "الكل" + "المقترحة" يقترح Kick غالبًا بثوثًا باللغة الإنجليزية.',
+      startError: 'تعذّر تحميل البثوث.', startRetry: 'تحقّق من الاتصال واضغط OK لإعادة المحاولة.'
     },
     pt: {
       search: 'Buscar', recentChannels: 'Canais assistidos recentemente', loading: 'Carregando…',
@@ -127,7 +131,8 @@ var I18n = (function () {
       liveStreams: 'Ao vivo', filterTitle: 'Filtro de transmissões', streamLanguage: 'Idioma da transmissão', allLanguages: 'Todos',
       allLangsShort: 'Todos os idiomas', sortBy: 'Ordenar por', sortFeatured: 'Recomendados', sortViewers: 'Mais espectadores',
       apply: 'Aplicar', cancel: 'Cancelar', filterHint: 'As alterações valem quando você pressiona "Aplicar". Você pode escolher vários idiomas.',
-      featuredAllNote: 'Obs.: com "Todos" + "Recomendados", a Kick recomenda principalmente transmissões em inglês.'
+      featuredAllNote: 'Obs.: com "Todos" + "Recomendados", a Kick recomenda principalmente transmissões em inglês.',
+      startError: 'Não foi possível carregar as transmissões.', startRetry: 'Verifique a conexão e pressione OK para tentar de novo.'
     },
     de: {
       search: 'Suchen', recentChannels: 'Zuletzt angesehene Kanäle', loading: 'Wird geladen…',
@@ -150,7 +155,8 @@ var I18n = (function () {
       liveStreams: 'Livestreams', filterTitle: 'Stream-Filter', streamLanguage: 'Stream-Sprache', allLanguages: 'Alle',
       allLangsShort: 'Alle Sprachen', sortBy: 'Sortieren nach', sortFeatured: 'Empfohlen', sortViewers: 'Meiste Zuschauer',
       apply: 'Übernehmen', cancel: 'Abbrechen', filterHint: 'Änderungen gelten erst nach "Übernehmen". Du kannst mehrere Sprachen wählen.',
-      featuredAllNote: 'Hinweis: Bei "Alle" + "Empfohlen" empfiehlt Kick fast nur englische Streams.'
+      featuredAllNote: 'Hinweis: Bei "Alle" + "Empfohlen" empfiehlt Kick fast nur englische Streams.',
+      startError: 'Streams konnten nicht geladen werden.', startRetry: 'Prüfe die Verbindung und drücke OK, um es erneut zu versuchen.'
     },
     fr: {
       search: 'Rechercher', recentChannels: 'Chaînes regardées récemment', loading: 'Chargement…',
@@ -173,7 +179,8 @@ var I18n = (function () {
       liveStreams: 'Lives', filterTitle: 'Filtre des lives', streamLanguage: 'Langue du live', allLanguages: 'Toutes',
       allLangsShort: 'Toutes les langues', sortBy: 'Trier par', sortFeatured: 'Recommandés', sortViewers: 'Plus de spectateurs',
       apply: 'Appliquer', cancel: 'Annuler', filterHint: 'Les changements s’appliquent quand vous appuyez sur « Appliquer ». Vous pouvez choisir plusieurs langues.',
-      featuredAllNote: 'Remarque : avec « Toutes » + « Recommandés », Kick recommande surtout des lives en anglais.'
+      featuredAllNote: 'Remarque : avec « Toutes » + « Recommandés », Kick recommande surtout des lives en anglais.',
+      startError: 'Impossible de charger les lives.', startRetry: 'Vérifiez la connexion et appuyez sur OK pour réessayer.'
     },
     ru: {
       search: 'Поиск', recentChannels: 'Недавно просмотренные каналы', loading: 'Загрузка…',
@@ -196,7 +203,8 @@ var I18n = (function () {
       liveStreams: 'Прямые трансляции', filterTitle: 'Фильтр трансляций', streamLanguage: 'Язык трансляции', allLanguages: 'Все',
       allLangsShort: 'Все языки', sortBy: 'Сортировка', sortFeatured: 'Рекомендуемые', sortViewers: 'Больше зрителей',
       apply: 'Применить', cancel: 'Отмена', filterHint: 'Изменения вступают в силу после нажатия «Применить». Можно выбрать несколько языков.',
-      featuredAllNote: 'Примечание: при «Все» + «Рекомендуемые» Kick в основном предлагает англоязычные трансляции.'
+      featuredAllNote: 'Примечание: при «Все» + «Рекомендуемые» Kick в основном предлагает англоязычные трансляции.',
+      startError: 'Не удалось загрузить трансляции.', startRetry: 'Проверьте подключение и нажмите OK, чтобы повторить.'
     },
     pl: {
       search: 'Szukaj', recentChannels: 'Ostatnio oglądane kanały', loading: 'Ładowanie…',
@@ -219,7 +227,8 @@ var I18n = (function () {
       liveStreams: 'Transmisje na żywo', filterTitle: 'Filtr transmisji', streamLanguage: 'Język transmisji', allLanguages: 'Wszystkie',
       allLangsShort: 'Wszystkie języki', sortBy: 'Sortuj według', sortFeatured: 'Polecane', sortViewers: 'Najwięcej widzów',
       apply: 'Zastosuj', cancel: 'Anuluj', filterHint: 'Zmiany zaczną obowiązywać po naciśnięciu „Zastosuj”. Możesz wybrać kilka języków.',
-      featuredAllNote: 'Uwaga: przy „Wszystkie” + „Polecane” Kick poleca głównie transmisje po angielsku.'
+      featuredAllNote: 'Uwaga: przy „Wszystkie” + „Polecane” Kick poleca głównie transmisje po angielsku.',
+      startError: 'Nie udało się załadować transmisji.', startRetry: 'Sprawdź połączenie i naciśnij OK, aby spróbować ponownie.'
     },
     it: {
       search: 'Cerca', recentChannels: 'Canali visti di recente', loading: 'Caricamento…',
@@ -242,7 +251,8 @@ var I18n = (function () {
       liveStreams: 'Dirette', filterTitle: 'Filtro dirette', streamLanguage: 'Lingua della diretta', allLanguages: 'Tutte',
       allLangsShort: 'Tutte le lingue', sortBy: 'Ordina per', sortFeatured: 'Consigliate', sortViewers: 'Più spettatori',
       apply: 'Applica', cancel: 'Annulla', filterHint: 'Le modifiche si applicano quando premi "Applica". Puoi scegliere più lingue.',
-      featuredAllNote: 'Nota: con "Tutte" + "Consigliate", Kick consiglia soprattutto dirette in inglese.'
+      featuredAllNote: 'Nota: con "Tutte" + "Consigliate", Kick consiglia soprattutto dirette in inglese.',
+      startError: 'Impossibile caricare le dirette.', startRetry: 'Controlla la connessione e premi OK per riprovare.'
     }
   };
 

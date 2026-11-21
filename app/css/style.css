@@ -165,4 +165,26 @@ button { font: inherit; color: inherit; background: none; border: 0; outline: no
 .menu-item { display: block; width: 100%; text-align: left; padding: 14px 20px; border-radius: 12px; border: 3px solid transparent; font-size: 28px; }
 .menu-item.selected { color: #53fc18; font-weight: 700; }
 
-.toast { position: absolute; left: 50%; bottom: 80px; -webkit-transform: translateX(-50%); transform: translateX(-50%); padding: 18px 36px; background: rgba(20,26,28,.95); border-radius: 14px; font-size: 26px; border: 2px solid #2a3236; z-index: 50; }
+/* Start-up splash: only opacity/transform animations (cheap on TV GPUs). */
+#splash { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; z-index: 100; background: #000;
+  will-change: opacity; -webkit-transform: translateZ(0); transform: translateZ(0);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  -webkit-transition: opacity .45s ease; transition: opacity .45s ease; }
+#splash.out { opacity: 0; }
+.splash-logo { display: flex; flex-direction: column; align-items: center; will-change: opacity;
+  -webkit-animation: splashIn .7s ease-out both; animation: splashIn .7s ease-out both; }
+.splash-logo svg { width: 150px; height: 175px; display: block; }
+.splash-word { margin-top: 30px; color: #fff; font-size: 60px; font-weight: 800; letter-spacing: 16px; padding-left: 16px; }
+.splash-bar { margin-top: 64px; width: 260px; height: 4px; border-radius: 2px; background: #1b2124; overflow: hidden; will-change: opacity;
+  -webkit-animation: splashIn .4s ease-out .5s both; animation: splashIn .4s ease-out .5s both; }  /* bar appears 0.5 s after the logo */
+.splash-bar span { display: block; width: 40%; height: 100%; border-radius: 2px; background: #53fc18; will-change: transform;
+  -webkit-animation: splashBar 1.1s ease-in-out infinite; animation: splashBar 1.1s ease-in-out infinite; }
+.splash-msg { margin-top: 56px; text-align: center; }
+.splash-msg b { display: block; color: #fff; font-size: 34px; font-weight: 700; }
+.splash-msg span { display: block; margin-top: 14px; color: #9aa5ab; font-size: 26px; }
+@-webkit-keyframes splashIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes splashIn { from { opacity: 0; } to { opacity: 1; } }
+@-webkit-keyframes splashBar { from { -webkit-transform: translateX(-100%); } to { -webkit-transform: translateX(250%); } }
+@keyframes splashBar { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+.toast { position: absolute; left: 50%; bottom: 80px; -webkit-transform: translateX(-50%); transform: translateX(-50%); padding: 18px 36px; background: rgba(20,26,28,.95); border-radius: 14px; font-size: 26px; border: 2px solid #2a3236; z-index: 120; }

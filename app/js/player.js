@@ -90,6 +90,58 @@ var Player = (function () {
   /* Called when a channel page opens: likely to play soon, so warm the player up in the background. */
   function preload() { ensureHls(function () {}); }
 
+  /* Live start-up: the stream's main playlist is fetched as soon as a live channel page opens.
+     When "Watch live" is pressed within 90 s with the same link, the player gets it instantly instead
+     of waiting for that request (the slowest single step before the first picture). Kick serves it
+     uncacheable, so the browser can't do this on its own. */
+  var prefetched = {}, PREFETCH_MS = 90000;
+  function prefetchManifest(url) {
+    if (!url || (prefetched[url] && Date.now() - prefetched[url].at < PREFETCH_MS)) return;
+    var xhr = new XMLHttpRequest();
+    try {
+      xhr.open('GET', Api.proxied(url), true);
+      xhr.timeout = 8000;
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300 && xhr.responseText.indexOf('#EXTM3U') === 0) {
+          prefetched = {};  // keep only the latest one
+          prefetched[url] = { text: xhr.responseText, at: Date.now() };
+        }
+      };
+      xhr.send();
+    } catch (e) {}
+  }
+  function takePrefetched(url) {
+    var hit = prefetched[url];
+    delete prefetched[url];
+    return hit && Date.now() - hit.at < PREFETCH_MS ? hit.text : null;
+  }
+  /* Playlist loader that answers the main playlist from the prefetch, and otherwise behaves
+     exactly like hls.js's own loader. */
+  function makePlaylistLoader() {
+    var Base = Hls.DefaultConfig.loader;
+    function Loader(config) { this.inner = new Base(config); this.stats = this.inner.stats; this.context = null; }
+    Loader.prototype.load = function (context, config, callbacks) {
+      var text = context.type === 'manifest' ? takePrefetched(context.url) : null;
+      if (text) {
+        var now = performance.now(), st = this.stats;
+        st.loading.start = st.loading.first = st.loading.end = now;
+        st.loaded = st.total = text.length;
+        this.context = context;
+        var self = this;
+        setTimeout(function () { callbacks.onSuccess({ url: context.url, data: text }, st, context, null); self.stats = st; }, 0);
+        return;
+      }
+      this.inner.load(context, config, callbacks);
+      this.stats = this.inner.stats;
+      this.context = context;
+    };
+    Loader.prototype.abort = function () { this.inner.abort(); };
+    Loader.prototype.destroy = function () { this.inner.destroy(); };
+    Loader.prototype.getCacheAge = function () { return this.inner.getCacheAge ? this.inner.getCacheAge() : null; };
+    Loader.prototype.getResponseHeader = function (n) { return this.inner.getResponseHeader ? this.inner.getResponseHeader(n) : null; };
+    return Loader;
+  }
+
   function load(url, startAt) {
     var my = ++loadSeq;
     destroyHls();
@@ -110,6 +162,8 @@ var Player = (function () {
         manifestLoadingMaxRetry: 4, levelLoadingMaxRetry: 4, fragLoadingMaxRetry: 6
       };
       if (Api.DEV) cfg.xhrSetup = function (xhr, u) { xhr.open('GET', Api.proxied(u), true); };
+      cfg.startFragPrefetch = true;
+      try { cfg.pLoader = makePlaylistLoader(); } catch (e) {}
       hls = new Hls(cfg);
       loadingStopped = false; frameOnly = false;
       hls.on(Hls.Events.MANIFEST_PARSED, function () {
@@ -369,7 +423,38 @@ var Player = (function () {
   }
   function exit() { stop(); if (onExit) onExit(); }
 
-  function pauseForBackground() { if (opts && !video.paused) { video.pause(); if (isVod()) Store.setResume(opts.vodId, video.currentTime, duration()); } }
+  /* App in the background (another app, TV menu, screen off): stop the video, downloads, chat and
+     timers; nothing runs while you're away. On return a live stream rejoins at the live edge with
+     chat; a past broadcast stays paused where it was. */
+  var inBackground = false, bgWasPlaying = false;
+  function pauseForBackground() {
+    if (!opts || inBackground) return;
+    inBackground = true;
+    bgWasPlaying = !video.paused;
+    commitSeek();
+    if (!video.paused) video.pause();            // VOD: the pause handler also stops downloading
+    if (isVod()) Store.setResume(opts.vodId, video.currentTime, duration());
+    else if (hls) { hls.stopLoad(); loadingStopped = true; }
+    clearInterval(saveTimer); clearTimeout(osdTimer); clearTimeout(retryTimer); clearTimeout(waitTimer);
+    Chat.disconnect();
+  }
+  function resumeFromBackground() {
+    if (!opts || !inBackground) return;
+    inBackground = false;
+    if (isVod()) {
+      saveTimer = setInterval(function () { if (opts && !video.paused) Store.setResume(opts.vodId, video.currentTime, duration()); }, 10000);
+      showOsd(true);
+      return;
+    }
+    if (chatOn) Chat.connect(opts.channelId, opts.chatroomId);
+    if (hls) {
+      loadingStopped = false;
+      hls.startLoad(-1);
+      if (hls.liveSyncPosition) video.currentTime = hls.liveSyncPosition;
+    }
+    if (bgWasPlaying) play();
+    showOsd();
+  }
 
   function togglePause() {
     if (!isVod()) { if (video.paused) play(); return; }
@@ -414,5 +499,6 @@ var Player = (function () {
     toastTimer = setTimeout(function () { t.classList.add('hidden'); }, 3500);
   }
 
-  return { open: open, stop: stop, preload: preload, handleKey: handleKey, pauseForBackground: pauseForBackground, toast: toast, isOpen: function () { return !!opts; } };
+  return { open: open, stop: stop, preload: preload, prefetch: prefetchManifest, handleKey: handleKey,
+    pauseForBackground: pauseForBackground, resumeFromBackground: resumeFromBackground, toast: toast, isOpen: function () { return !!opts; } };
 }());

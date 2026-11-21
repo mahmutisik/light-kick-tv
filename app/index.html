@@ -4,6 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=1920, height=1080, user-scalable=no">
   <title>Light Kick TV</title>
+  <!-- Start connecting to Kick's servers right away (DNS + TCP + TLS), while the splash is showing,
+       so the first API call and thumbnails don't each pay for the connection setup. -->
+  <link rel="preconnect" href="https://web.kick.com" crossorigin>
+  <link rel="preconnect" href="https://kick.com" crossorigin>
+  <link rel="preconnect" href="https://images.kick.com">
+  <link rel="preconnect" href="https://files.kick.com">
+  <link rel="dns-prefetch" href="https://web.kick.com">
+  <link rel="dns-prefetch" href="https://images.kick.com">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -151,6 +159,17 @@
     </section>
 
     <div id="toast" class="toast hidden"></div>
+
+    <!-- Start-up splash: visible as soon as the page is parsed, removed by app.js once the
+         home screen is ready (at least ~1.3 s; if the list fails or takes over 10 s it shows an error and OK retries). -->
+    <div id="splash">
+      <div class="splash-logo">
+        <svg viewBox="0 0 20.53 24" aria-hidden="true"><path fill="#53FC18" d="M0 .028h7.7v5.32h2.561v-2.66h2.562V.028h7.7v7.996H17.96v2.66h-2.562v2.66h2.562v2.66h2.562V24h-7.699v-2.66h-2.562v-2.66H7.7V24H0V.028Z"/></svg>
+        <div class="splash-word">LIGHT</div>
+      </div>
+      <div class="splash-bar" id="splashBar"><span></span></div>
+      <div class="splash-msg hidden" id="splashMsg"><b id="splashErr"></b><span id="splashHint"></span></div>
+    </div>
   </div>
 
   <!-- lib/hls.min.js (~600 KB) is loaded on demand by player.js, not at startup. -->

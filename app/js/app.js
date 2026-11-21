@@ -44,7 +44,7 @@
     return node && node !== document ? node : null;
   }
   function checkLazy(sc) {
-    if (!sc) return;
+    if (!sc || splashOpen) return;  // image decoding waits until the splash is gone (TV CPU is busy then)
     var sr = sc.getBoundingClientRect();
     if (!sr.height) return;  // screen not visible yet; checked again when it is shown
     var nodes = sc.querySelectorAll('[data-bg]');
@@ -79,8 +79,18 @@
   }
   function back() {
     if (!stack.length) { tryExit(); return; }
+    if (current === 'player') clearTimeout(releaseTimer);
     var prev = stack.pop(), preferred = prev.focus;
     if (prev.id === 'home') {
+      if (homeStale) {
+        // Watched for a while: the old list was released; load a fresh one and start at the top.
+        homeStale = false;
+        renderRecent();
+        renderFollowed(true);
+        showScreen('home', el('btnFilter'));
+        loadLive(true);
+        return;
+      }
       // Son izlenenler / takip listesi değişmiş olabilir: yeniden çiz, odağı aynı yerde tut.
       var path = focusPath(prev.focus);
       renderRecent();
@@ -89,6 +99,34 @@
     }
     showScreen(prev.id, preferred);
     if (prev.id === 'channel') { refreshVodProgress(); updateFollowBtn(); }
+  }
+
+  /* Memory while watching: after RELEASE_MS in the player, the screens behind it give up their
+     images (the home list is dropped and reloaded fresh on return, since its thumbnails, viewer
+     counts and live streams are outdated by then anyway). A short look into a stream keeps
+     everything as it was. */
+  var RELEASE_MS = 120000, releaseTimer = null, homeStale = false;
+  function enteredPlayer() {
+    clearTimeout(releaseTimer);
+    releaseTimer = setTimeout(releaseBackground, RELEASE_MS);
+  }
+  function releaseBackground() {
+    if (current !== 'player') return;
+    home.seq++;  // cancel a page that may still be loading
+    home.items = []; home.cursor = null; home.hasMore = false; home.loading = false;
+    el('liveGrid').innerHTML = '';
+    el('followGrid').innerHTML = '';
+    homeStale = true;
+    // Other screens keep their cards (and the focus position); only their images are let go and
+    // reload lazily from the browser cache when the screen is shown again.
+    ['channelScroll', 'searchScroll', 'homeScroll', 'settingsScroll'].forEach(function (id) { unloadImages(el(id)); });
+  }
+  function unloadImages(container) {
+    var nodes = container.querySelectorAll('[style*="background-image"]');
+    for (var i = 0; i < nodes.length; i++) {
+      var m = /url\(["']?([^"')]+)["']?\)/.exec(nodes[i].style.backgroundImage);
+      if (m) { nodes[i].setAttribute('data-bg', m[1]); nodes[i].style.backgroundImage = ''; }
+    }
   }
   function focusPath(node) {
     if (!node || !node.parentNode || !node.parentNode.id) return null;
@@ -356,6 +394,14 @@
     loadLive(true);
     followCache.at = 0;
   }
+  function homeCard(x) {
+    var grid = el('liveGrid'), card = liveCard(x);
+    card.onfocusnav = function () {
+      var cards = grid.children, idx = Array.prototype.indexOf.call(cards, card);
+      if (home.hasMore && !home.loading && idx >= cards.length - 4) loadLive(false);
+    };
+    return card;
+  }
   function loadLive(reset) {
     if (home.loading && !reset) return;
     var my = ++home.seq, grid = el('liveGrid'), note = el('liveNote');
@@ -365,6 +411,8 @@
     Api.livestreams(home.filter, home.cursor, function (err, res) {
       if (my !== home.seq) return;
       home.loading = false;
+      if (err && splashOpen) { showSplashError(); return; }
+      if (!err) homeReady();
       note.textContent = '';
       if (err) { note.appendChild(retryButton(function () { loadLive(false); })); return; }
       var seen = {};
@@ -373,18 +421,54 @@
       home.items = home.items.concat(fresh);
       home.cursor = res.next;
       home.hasMore = !!res.next && fresh.length > 0 && home.items.length < 96;  // çok kart TV belleğini doldurur
-      fresh.forEach(function (x) {
-        var card = liveCard(x);
-        card.onfocusnav = function () {
-          var cards = grid.children, idx = Array.prototype.indexOf.call(cards, card);
-          if (home.hasMore && !home.loading && idx >= cards.length - 4) loadLive(false);
-        };
-        grid.appendChild(card);
-      });
+      fresh.forEach(function (x) { grid.appendChild(homeCard(x)); });
       observeImages(grid);
       if (!home.items.length) note.textContent = I18n.t('nothingLive');
       if (current === 'home' && !Nav.getFocused()) Nav.setScope(el('home'));
     });
+  }
+
+  /* ---------- Start-up splash ---------- */
+  var splashOpen = !!document.getElementById('splash');
+  var followPending = false, splashError = false, splashWatch = null, START_TIMEOUT_MS = 10000;
+  function watchStart() {
+    clearTimeout(splashWatch);
+    splashWatch = setTimeout(function () { if (splashOpen && home.loading) showSplashError(); }, START_TIMEOUT_MS);
+  }
+  function showSplashError() {
+    if (!splashOpen) return;
+    clearTimeout(splashWatch);
+    splashError = true;
+    el('splashErr').textContent = I18n.t('startError');
+    el('splashHint').textContent = I18n.t('startRetry');
+    el('splashBar').classList.add('hidden');
+    el('splashMsg').classList.remove('hidden');
+  }
+  function retryStart() {
+    splashError = false;
+    el('splashMsg').classList.add('hidden');
+    el('splashBar').classList.remove('hidden');
+    watchStart();
+    loadLive(true);
+  }
+  function hideSplash() {
+    var s = el('splash');
+    if (!splashOpen || !s || s.classList.contains('out')) return;  // already fading or gone
+    clearTimeout(splashWatch);
+    s.classList.add('out');
+    if (followPending) { followPending = false; renderFollowed(true); }  // network only: fine during the fade
+    setTimeout(function () {
+      splashOpen = false;
+      if (s.parentNode) s.parentNode.removeChild(s);
+      var scs = current ? el(current).querySelectorAll('.scroller') : [];
+      for (var i = 0; i < scs.length; i++) checkLazy(scs[i]);  // now load the thumbnails
+    }, 480);
+  }
+  // Called when the first live list request finishes: keep the splash up at least ~1.3 s overall,
+  // so on a fast connection the logo still finishes its fade-in and shows for a moment.
+  function homeReady() {
+    var shown = window.performance && performance.now ? performance.now() : 0;
+    setTimeout(hideSplash, Math.max(0, 1300 - shown));
   }
 
   /* ---------- Arama ---------- */
@@ -479,6 +563,7 @@
         (ch.live ? ' · ' + I18n.t('viewers', { n: I18n.number(ch.viewers) }) + (ch.category ? ' · ' + ch.category : '') : ' · ' + I18n.t('offline'));
       el('chTitle').textContent = ch.title;
       el('btnWatchLive').classList.toggle('hidden', !ch.live);
+      if (ch.live && Date.now() - ch.fetchedAt < 90000) Player.prefetch(ch.playbackUrl);
       el('btnFollow').classList.remove('hidden');
       updateFollowBtn();
       Store.addRecent({ slug: ch.slug, name: ch.name, pic: ch.pic });
@@ -518,22 +603,29 @@
 
   /* ---------- Oynatma ---------- */
   function watchLive() {
-    var slug = chan.slug;
+    var slug = chan.slug, d = chan.data;
+    // A link fetched less than 90 s ago is still valid (Kick's links last ~10 min): start right away.
+    if (d && d.live && d.playbackUrl && Date.now() - d.fetchedAt < 90000) { startLive(d); return; }
     Player.toast(I18n.t('loadingStream'));
     // Yayın linkindeki anahtar kısa ömürlü; izlemeden hemen önce tazele.
     Api.channel(slug, function (err, ch) {
       if (current !== 'channel' || chan.slug !== slug) return;
       if (err || !ch.live) { Player.toast(err ? I18n.t('loadFailed') : I18n.t('offline')); return; }
       chan.data = ch;
-      go('player');
-      Player.open({
-        kind: 'live', url: ch.playbackUrl, channelName: ch.name, title: ch.title,
-        channelId: ch.id, chatroomId: ch.chatroomId
-      }, back);
+      startLive(ch);
     }, true);
+  }
+  function startLive(ch) {
+    go('player');
+    enteredPlayer();
+    Player.open({
+      kind: 'live', url: ch.playbackUrl, channelName: ch.name, title: ch.title,
+      channelId: ch.id, chatroomId: ch.chatroomId
+    }, back);
   }
   function playVod(v) {
     go('player');
+    enteredPlayer();
     Player.open({
       kind: 'vod', url: v.source, vodId: v.id, duration: v.duration,
       channelName: chan.data ? chan.data.name : chan.slug, title: v.title
@@ -543,6 +635,12 @@
   /* ---------- Tuşlar ---------- */
   function onKey(e) {
     var code = e.keyCode;
+    if (splashOpen) {
+      if (code === K.ENTER && splashError) retryStart();
+      else if (Nav.isBack(code)) tryExit();
+      e.preventDefault();
+      return;
+    }
     if (current === 'player') { if (Player.handleKey(code)) e.preventDefault(); return; }
     if (filterOpen) {
       if (code === K.LEFT) Nav.move('left');
@@ -583,7 +681,13 @@
     I18n.apply();
     renderHomeHeader();
     renderRecent();
-    renderFollowed(true);
+    try { localStorage.removeItem('kickizle.homeCache'); localStorage.removeItem('kickizle.followLive'); } catch (e) {}  // from a dev build
+    if (splashOpen && Store.follows().length) {
+      // Reserve the row now so nothing jumps later; its requests start when the splash fades.
+      el('followWrap').classList.remove('hidden');
+      el('followNote').textContent = I18n.t('loading');
+      followPending = true;
+    } else renderFollowed(true);
 
     el('btnSearch').onclick = openSearch;
     el('btnFilter').onclick = openFilter;
@@ -595,7 +699,9 @@
     el('searchInput').addEventListener('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 600); });
 
     document.addEventListener('keydown', onKey);
-    document.addEventListener('visibilitychange', function () { if (document.hidden) Player.pauseForBackground(); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) Player.pauseForBackground(); else Player.resumeFromBackground();
+    });
     // Fareyle test için: fare gerçekten hareket edince üzerindeki öğeye odaklan.
     // (Sayfa imlecin altında kayınca tarayıcı da olay üretir; onları ve tuş basımından hemen sonrasını yok say.)
     var lastMouse = { x: -1, y: -1 }, lastKeyAt = 0;
@@ -611,7 +717,20 @@
 
     showScreen('home', el('btnSearch'));
     loadLive(true);
+    watchStart();  // no list after 10 s: show the error on the splash
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  /* Start after the splash's first frame has been painted, so it appears without a hitch; the work
+     itself doesn't take longer. (The timeout covers engines that don't paint while hidden.) */
+  var started = false;
+  function start() {
+    if (started) return;
+    started = true;
+    init();
+  }
+  function startAfterPaint() {
+    if (window.requestAnimationFrame) requestAnimationFrame(function () { requestAnimationFrame(start); });
+    setTimeout(start, 120);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startAfterPaint); else startAfterPaint();
 }());
