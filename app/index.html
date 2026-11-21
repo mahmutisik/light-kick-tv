@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, height=1080, user-scalable=no">
+  <title>Light Kick TV</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="stage">
+
+    <!-- Ana sayfa -->
+    <section id="home" class="screen">
+      <header class="topbar">
+        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"></div>
+        <nav class="topnav">
+          <button class="pill focusable" id="btnSearch" data-i18n="search"></button>
+          <button class="pill focusable lang-tab" data-lang="tr" data-i18n="langTr"></button>
+          <button class="pill focusable lang-tab" data-lang="en" data-i18n="langEn"></button>
+          <button class="pill icon focusable" id="btnSettings" aria-label="Settings"><svg viewBox="0 0 24 24" width="34" height="34"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .3.2.5.5.5h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg></button>
+        </nav>
+      </header>
+      <div class="scroller" id="homeScroll">
+        <div id="followWrap" class="section hidden">
+          <h2 data-i18n="followedLive"></h2>
+          <div class="grid" id="followGrid"></div>
+          <div class="note" id="followNote"></div>
+        </div>
+        <div id="recentWrap" class="section hidden">
+          <h2 data-i18n="recentChannels"></h2>
+          <div class="chips" id="recentList"></div>
+        </div>
+        <div class="section">
+          <h2 id="liveTitle"></h2>
+          <div class="grid" id="liveGrid"></div>
+          <div class="note" id="liveNote"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Arama -->
+    <section id="search" class="screen hidden">
+      <header class="topbar">
+        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" data-i18n="search"></span></div>
+      </header>
+      <div class="search-row">
+        <input id="searchInput" class="focusable" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="scroller" id="searchScroll">
+        <div class="grid channels" id="searchGrid"></div>
+        <div class="note" id="searchNote"></div>
+      </div>
+    </section>
+
+    <!-- Kanal -->
+    <section id="channel" class="screen hidden">
+      <div class="scroller" id="channelScroll">
+        <div class="channel-head">
+          <img id="chAvatar" class="avatar big" alt="">
+          <div class="channel-info">
+            <div class="channel-name"><span id="chName"></span> <span id="chLive" class="badge live hidden">CANLI</span></div>
+            <div class="muted" id="chMeta"></div>
+            <div class="channel-title" id="chTitle"></div>
+            <div class="actions">
+              <button class="btn primary focusable hidden" id="btnWatchLive" data-i18n="watchLive"></button>
+              <button class="btn focusable hidden" id="btnFollow"></button>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <h2 data-i18n="pastBroadcasts"></h2>
+          <div class="grid" id="vodGrid"></div>
+          <div class="note" id="vodNote"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ayarlar -->
+    <section id="settings" class="screen hidden">
+      <header class="topbar">
+        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" data-i18n="settings"></span></div>
+      </header>
+      <div class="scroller" id="settingsScroll">
+        <div class="section">
+          <h2 data-i18n="uiLanguage"></h2>
+          <div class="chips">
+            <button class="pill focusable ui-lang" data-ui="tr">Türkçe</button>
+            <button class="pill focusable ui-lang" data-ui="en">English</button>
+          </div>
+        </div>
+        <div class="section">
+          <h2 data-i18n="followedChannels"></h2>
+          <div id="followList"></div>
+          <div class="note" id="followListNote"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Oynatıcı -->
+    <section id="player" class="screen hidden">
+      <video id="video" playsinline></video>
+      <div id="playerStatus" class="player-status hidden">
+        <div class="spinner"></div>
+        <div class="status-title" id="statusTitle"></div>
+        <div class="status-detail" id="statusDetail"></div>
+      </div>
+      <div id="pauseIcon" class="pause-icon hidden"><span></span><span></span></div>
+      <div id="chatPanel" class="chat hidden">
+        <div class="chat-head"><span data-i18n="liveChat"></span> <span id="chatState" class="muted"></span></div>
+        <div class="chat-list" id="chatList"></div>
+      </div>
+      <div id="osd" class="osd">
+        <div class="osd-top">
+          <div class="osd-channel" id="osdChannel"></div>
+          <div class="osd-title" id="osdTitle"></div>
+        </div>
+        <div class="osd-bottom">
+          <div class="progress hidden" id="progress">
+            <div class="progress-buffer" id="progressBuffer"></div>
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-knob" id="progressKnob"></div>
+          </div>
+          <div class="osd-row">
+            <span class="badge live hidden" id="osdLive">CANLI</span>
+            <span id="osdTime"></span>
+            <span class="osd-quality" id="osdQuality"></span>
+            <span class="osd-hint" id="osdHint"></span>
+          </div>
+        </div>
+      </div>
+      <div id="qualityMenu" class="menu hidden">
+        <h3 data-i18n="quality"></h3>
+        <div id="qualityList"></div>
+      </div>
+    </section>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="lib/hls.min.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

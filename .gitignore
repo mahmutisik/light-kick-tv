@@ -1,0 +1,9 @@
+# Build output
+dist/
+node_modules/
+
+# Local tooling and leftovers (not part of the project)
+.claude/
+Apps2Samsung/
+apps2samsung-dl/
+src-kicktv/
