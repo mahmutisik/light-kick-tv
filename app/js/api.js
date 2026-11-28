@@ -51,8 +51,9 @@ var Api = (function () {
   function pickImage(img, wanted) {
     if (!img) return '';
     if (typeof img === 'string') return img;
-    if (img.srcset) {
-      var best = '', bestDiff = 1e9, parts = img.srcset.split(',');
+    var set = img.srcset || img.responsive;  // category banners use `responsive`
+    if (set) {
+      var best = '', bestDiff = 1e9, parts = set.split(',');
       for (var i = 0; i < parts.length; i++) {
         var p = parts[i].replace(/^\s+|\s+$/g, '').split(/\s+/), w = parseInt(p[1], 10) || 0;
         var diff = Math.abs(w - (wanted || 640));
@@ -69,6 +70,7 @@ var Api = (function () {
      sorting by viewers and accepts several languages. Paged with an opaque `after` cursor. */
   function livestreams(filter, cursor, cb) {
     var url = 'https://web.kick.com/api/v1/livestreams?limit=24&sort=' + (filter.sort === 'viewers' ? 'viewer_count_desc' : 'featured');
+    if (filter.category) url += '&category_id=' + encodeURIComponent(filter.category);  // one game / category
     (filter.langs || []).forEach(function (l) { url += '&language=' + encodeURIComponent(l); });
     if (cursor) url += '&after=' + encodeURIComponent(cursor);
     get(url, function (err, d) {
@@ -152,16 +154,62 @@ var Api = (function () {
     }, fresh);
   }
 
+  /* Games / categories ("subcategories" in Kick's API): id, name, viewers, portrait banner. */
+  function categoryItem(c) {
+    return { id: c.id, slug: c.slug, name: c.name || c.slug, viewers: c.viewers || 0, banner: pickImage(c.banner, 285) };
+  }
+  /* Search: channels plus games / categories. cb(err, { channels: [...], categories: [...] }) */
   function search(query, cb) {
     return get('https://kick.com/api/search?searched_word=' + encodeURIComponent(query), function (err, d) {
       if (err) { cb(err); return; }
-      cb(null, ((d && d.channels) || []).map(function (c) {
-        var u = c.user || {};
+      cb(null, {
+        channels: ((d && d.channels) || []).map(function (c) {
+          var u = c.user || {};
+          return {
+            slug: c.slug, name: u.username || c.slug, pic: userPic(u),
+            followers: c.followers_count || c.followersCount || 0, live: !!(c.isLive || c.is_live)
+          };
+        }).filter(function (x) { return !!x.slug; }),
+        categories: ((d && d.categories) || []).map(categoryItem).filter(function (x) { return !!x.id; })
+      });
+    });
+  }
+
+  /* All games / categories, most watched first, 24 per page. cb(err, { items, next: page or null }) */
+  function categories(page, cb) {
+    cachedGet('https://kick.com/api/v1/subcategories?limit=24&page=' + (page || 1), function (err, d) {
+      if (err) { cb(err); return; }
+      cb(null, {
+        items: ((d && d.data) || []).map(categoryItem).filter(function (x) { return !!x.id; }),
+        next: d && d.next_page_url ? (page || 1) + 1 : null
+      });
+    });
+  }
+
+  /* A channel's clips: the most viewed of the last month, or of all time if the month has none. */
+  function clips(slug, cb) {
+    var base = 'https://kick.com/api/v2/channels/' + encodeURIComponent(slug) + '/clips?sort=view&time=';
+    function map(d) {
+      return ((d && d.clips) || []).map(function (c) {
         return {
-          slug: c.slug, name: u.username || c.slug, pic: userPic(u),
-          followers: c.followers_count || c.followersCount || 0, live: !!(c.isLive || c.is_live)
+          id: c.id, title: c.title || '', source: c.video_url || c.clip_url || '', thumb: c.thumbnail_url || '',
+          duration: c.duration || 0, views: c.views || c.view_count || 0, created: c.created_at || '',
+          category: c.category ? c.category.name : ''
         };
-      }).filter(function (x) { return !!x.slug; }));
+      }).filter(function (x) { return !!x.source; });
+    }
+    cachedGet(base + 'month', function (err, d) {
+      if (err) { cb(err); return; }
+      var list = map(d);
+      if (list.length) { cb(null, list); return; }
+      cachedGet(base + 'all', function (e2, d2) { cb(e2 || null, e2 ? null : map(d2)); });
+    });
+  }
+
+  /* Newest published release of this app on GitHub (checked at most once a day). cb(tag or null) */
+  function latestRelease(cb) {
+    get('https://api.github.com/repos/mahmutisik/light-kick-tv/releases/latest', function (err, d) {
+      cb(!err && d && typeof d.tag_name === 'string' ? d.tag_name : null);
     });
   }
 
@@ -200,6 +248,6 @@ var Api = (function () {
   return {
     DEV: DEV, proxied: proxied,
     setSimulate: function (mode) { if (DEV) simulate = mode || ''; },
-    livestreams: livestreams, channel: channel, livestream: livestream, videos: videos, chatHistory: chatHistory, search: search, chatConfig: chatConfig
+    livestreams: livestreams, categories: categories, clips: clips, latestRelease: latestRelease, channel: channel, livestream: livestream, videos: videos, chatHistory: chatHistory, search: search, chatConfig: chatConfig
   };
 }());

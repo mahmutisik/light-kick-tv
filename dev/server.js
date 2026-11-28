@@ -10,7 +10,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..', 'app');
 const PORT = Number(process.env.PORT) || 8099;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.xml': 'application/xml' };
-const ALLOWED = /^https:\/\/([a-z0-9-]+\.)*(kick\.com|live-video\.net|kickcdn\.com)\//i;
+const ALLOWED = /^https:\/\/(([a-z0-9-]+\.)*(kick\.com|live-video\.net|kickcdn\.com)\/|api\.github\.com\/repos\/mahmutisik\/light-kick-tv\/)/i;
 const UA = 'Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.5) AppleWebKit/537.36 (KHTML, like Gecko) 85.0.4183.93/6.5 TV Safari/537.36';
 
 // Make playlist URLs absolute so hls.js can route them back through the proxy.

@@ -23,6 +23,7 @@
         <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"></div>
         <nav class="topnav">
           <button class="pill focusable" id="btnSearch" data-i18n="search"></button>
+          <button class="pill focusable" id="btnCategories" data-i18n="categories"></button>
           <button class="pill focusable" id="btnFilter"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5Z"/></svg><span id="filterSummary"></span></button>
           <button class="pill icon focusable" id="btnSettings" aria-label="Settings"><svg viewBox="0 0 24 24" width="34" height="34"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .3.2.5.5.5h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg></button>
         </nav>
@@ -74,8 +75,36 @@
           <h2 data-i18n="recentSearches"></h2>
           <div class="chips wrap" id="historyList"></div>
         </div>
+        <div id="searchCatWrap" class="section hidden">
+          <h2 data-i18n="gamesAndCategories"></h2>
+          <div class="grid cats" id="searchCats"></div>
+        </div>
+        <h2 id="searchChanTitle" class="list-title hidden" data-i18n="channelsTitle"></h2>
         <div class="grid channels" id="searchGrid"></div>
         <div class="note" id="searchNote"></div>
+      </div>
+    </section>
+
+    <!-- Games & categories -->
+    <section id="categories" class="screen hidden">
+      <header class="topbar">
+        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" data-i18n="categories"></span></div>
+      </header>
+      <div class="scroller" id="categoriesScroll">
+        <div class="grid cats" id="catGrid"></div>
+        <div class="note" id="catNote"></div>
+      </div>
+    </section>
+
+    <!-- One game / category: its live streams -->
+    <section id="category" class="screen hidden">
+      <header class="topbar">
+        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" id="catTitle"></span></div>
+        <div class="muted topbar-sub" id="catSub"></div>
+      </header>
+      <div class="scroller" id="categoryScroll">
+        <div class="grid" id="catLiveGrid"></div>
+        <div class="note" id="catLiveNote"></div>
       </div>
     </section>
 
@@ -94,10 +123,18 @@
             </div>
           </div>
         </div>
-        <div class="section">
-          <h2 data-i18n="pastBroadcasts"></h2>
+        <!-- Past broadcasts / clips: one list at a time, switched with OK on these tabs -->
+        <div class="chips tabs">
+          <button class="pill focusable active" id="tabVods" data-i18n="pastBroadcasts"></button>
+          <button class="pill focusable" id="tabClips" data-i18n="clips"></button>
+        </div>
+        <div class="section" id="vodSection">
           <div class="grid" id="vodGrid"></div>
           <div class="note" id="vodNote"></div>
+        </div>
+        <div class="section hidden" id="clipSection">
+          <div class="grid" id="clipGrid"></div>
+          <div class="note" id="clipNote"></div>
         </div>
       </div>
     </section>
@@ -116,6 +153,13 @@
           <h2 data-i18n="followedChannels"></h2>
           <div id="followList"></div>
           <div class="note" id="followListNote"></div>
+        </div>
+        <div class="section">
+          <h2 data-i18n="about"></h2>
+          <div class="about focusable" id="aboutRow">
+            <div>Light Kick TV &nbsp;·&nbsp; <span id="aboutVersion"></span></div>
+            <div class="muted about-status" id="aboutStatus"></div>
+          </div>
         </div>
       </div>
     </section>

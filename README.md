@@ -20,8 +20,14 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
 
 - **Live streams** with a **filter**: one or more stream languages (or all), sorted by Recommended or
   Most viewers. Changes apply only when you press Apply, so browsing the options costs nothing.
-- **Search** channels using Kick's own search, with your **recent searches** under the search box
-- **Channel page** with the live stream and the full list of **past broadcasts**
+- **Search** channels and **games** using Kick's own search, with your **recent searches** under the
+  search box
+- **Games & categories**: browse every category, most watched first, and open one to see its live
+  streams (most viewers first, in the languages chosen in the home filter)
+- **Channel page** with the live stream, the full list of **past broadcasts** and the channel's
+  most viewed **clips**
+- **Know when a stream starts**: an offline channel's page checks every 15 s while it's open; when
+  the stream starts, "Watch live" appears and a message says so (nothing plays by itself)
 - **Rewind live streams**: press ← while watching live to go back into the running stream's
   recording; seek and pause as in a past broadcast, seek to the end to return to live. Chat closes
   while rewinding and comes back with live.
@@ -34,7 +40,9 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
 - **Follow channels** without a Kick account. Followed channels that are live appear at the top of
   the home screen.
 - **Recently watched** channels
-- **Settings** (⚙): manage followed channels, switch the interface language
+- **Settings** (⚙): manage followed channels, switch the interface language, see the app version
+- **Update notice**: once a day the app checks GitHub for a newer release and tells you once when
+  there is one (install it with Apps2Samsung as before)
 - Interface in **10 languages**: English, Türkçe, Español, العربية, Português, Deutsch, Français,
   Русский, Polski, Italiano. The app starts in the TV's menu language when it's one of these,
   otherwise in English. Numbers and dates follow the chosen language.
@@ -118,8 +126,9 @@ TV web engines are far weaker than a desktop browser, so the player is deliberat
 - Everything the app remembers (followed channels, recently watched, resume points, settings) is
   stored **only on your TV**.
 - The app talks only to Kick's public endpoints (`kick.com`, `web.kick.com`), Kick's video and image
-  CDNs (`*.live-video.net`, `stream.kick.com`, `images.kick.com`, `files.kick.com`) and Kick's public
-  chat feed on Pusher (read-only).
+  CDNs (`*.live-video.net`, `stream.kick.com`, `clips.kick.com`, `images.kick.com`, `files.kick.com`) and Kick's public
+  chat feed on Pusher (read-only). Once a day it also asks GitHub's public API
+  (`api.github.com`) for the newest release of this app; nothing about you is sent.
 
 ## Development
 

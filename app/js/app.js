@@ -18,7 +18,10 @@
   }
   var home = { filter: loadFilter(), cursor: null, items: [], hasMore: false, loading: false, seq: 0 };
   var draft = null, filterOpen = false;
-  var chan = { slug: null, data: null, vods: [], seq: 0 };
+  var chan = { slug: null, data: null, vods: [], seq: 0, watching: 0 };
+  var cats = { page: 1, items: [], hasMore: false, loading: false, seq: 0 };  // games & categories list
+  var cat = { data: null, cursor: null, items: [], hasMore: false, loading: false, seq: 0 };  // one category's streams
+  var MAX_CARDS = 96;  // more cards than this fill up the TV's memory
   var searchSeq = 0, searchTimer = null, searchXhr = null;
   var followCache = { at: 0, key: '', items: [] }, followSeq = 0;
 
@@ -87,6 +90,7 @@
   function back() {
     if (!stack.length) { tryExit(); return; }
     if (current === 'player') clearTimeout(releaseTimer);
+    if (current === 'channel') stopWatch();
     var prev = stack.pop(), preferred = prev.focus;
     if (prev.id === 'home') {
       if (homeStale) {
@@ -126,7 +130,7 @@
     homeStale = true;
     // Other screens keep their cards (and the focus position); only their images are let go and
     // reload lazily from the browser cache when the screen is shown again.
-    ['channelScroll', 'searchScroll', 'homeScroll', 'settingsScroll'].forEach(function (id) { unloadImages(el(id)); });
+    ['channelScroll', 'searchScroll', 'homeScroll', 'settingsScroll', 'categoriesScroll', 'categoryScroll'].forEach(function (id) { unloadImages(el(id)); });
   }
   function unloadImages(container) {
     var nodes = container.querySelectorAll('[style*="background-image"]');
@@ -233,6 +237,40 @@
     c.onclick = function () { playVod(v); };
     return c;
   }
+  function categoryCard(x) {
+    var c = make('div', 'card focusable'), th = make('div', 'cat-thumb');
+    bg(th, x.banner);
+    c.appendChild(th);
+    var body = make('div', 'card-body');
+    body.appendChild(make('div', 'card-title', x.name));
+    body.appendChild(make('div', 'card-sub', x.viewers ? I18n.t('viewers', { n: I18n.number(x.viewers) }) : '\u00a0'));
+    c.appendChild(body);
+    c.onclick = function () { openCategory(x); };
+    return c;
+  }
+  function clipCard(v) {
+    var c = make('div', 'card focusable'), th = make('div', 'thumb');
+    bg(th, v.thumb);
+    if (v.duration) th.appendChild(make('span', 'corner', fmtDur(v.duration)));
+    c.appendChild(th);
+    var body = make('div', 'card-body');
+    body.appendChild(make('div', 'card-title', v.title));
+    var parts = [vodDate(v.created)];
+    if (v.views) parts.push(I18n.t('views', { n: I18n.number(v.views) }));
+    if (v.category) parts.push(v.category);
+    body.appendChild(make('div', 'card-sub', parts.join(' · ')));
+    c.appendChild(body);
+    c.onclick = function () { playClip(v); };
+    return c;
+  }
+  /* Load the next page when the focus gets near the end of a growing grid. */
+  function pagedCard(card, grid, state, loadMore) {
+    card.onfocusnav = function () {
+      var cards = grid.children, idx = Array.prototype.indexOf.call(cards, card);
+      if (state.hasMore && !state.loading && idx >= cards.length - 6) loadMore();
+    };
+    return card;
+  }
   function retryButton(fn) {
     var b = make('button', 'btn focusable', I18n.t('loadFailed'));
     b.onclick = fn;
@@ -254,11 +292,13 @@
     observeImages(box);
   }
   function langName(c) { for (var i = 0; i < LANGS.length; i++) if (LANGS[i].c === c) return LANGS[i].n; return c; }
-  function filterSummary(f) {
-    var langs = !f.langs.length ? I18n.t('allLangsShort')
+  function langsSummary(f) {
+    return !f.langs.length ? I18n.t('allLangsShort')
       : f.langs.length <= 2 ? f.langs.map(langName).join(', ')
       : langName(f.langs[0]) + ', ' + langName(f.langs[1]) + ' +' + (f.langs.length - 2);
-    return langs + '  ·  ' + I18n.t(f.sort === 'viewers' ? 'sortViewers' : 'sortFeatured');
+  }
+  function filterSummary(f) {
+    return langsSummary(f) + '  ·  ' + I18n.t(f.sort === 'viewers' ? 'sortViewers' : 'sortFeatured');
   }
   function renderHomeHeader() {
     el('filterSummary').textContent = filterSummary(home.filter);
@@ -396,6 +436,7 @@
     var f = Nav.getFocused();
     if (current === 'settings' && (!f || !document.body.contains(f))) Nav.setScope(el('settings'));
     el('followListNote').textContent = list.length ? '' : I18n.t('noFollows');
+    renderAbout();
   }
   function setUiLang(lang) {
     if (lang === I18n.getLang()) return;
@@ -404,6 +445,7 @@
     renderHomeHeader();
     loadLive(true);
     followCache.at = 0;
+    cats.items = [];  // categories screen redraws with the new texts next time
   }
   function homeCard(x) {
     var grid = el('liveGrid'), card = liveCard(x);
@@ -431,7 +473,7 @@
       var fresh = res.items.filter(function (x) { return !seen[x.slug]; });
       home.items = home.items.concat(fresh);
       home.cursor = res.next;
-      home.hasMore = !!res.next && fresh.length > 0 && home.items.length < 96;  // çok kart TV belleğini doldurur
+      home.hasMore = !!res.next && fresh.length > 0 && home.items.length < MAX_CARDS;
       fresh.forEach(function (x) { grid.appendChild(homeCard(x)); });
       observeImages(grid);
       if (!home.items.length) note.textContent = I18n.t('nothingLive');
@@ -473,6 +515,7 @@
       if (s.parentNode) s.parentNode.removeChild(s);
       var scs = current ? el(current).querySelectorAll('.scroller') : [];
       for (var i = 0; i < scs.length; i++) checkLazy(scs[i]);  // now load the thumbnails
+      setTimeout(function () { checkUpdate(false); }, 4000);  // well after start-up
     }, 480);
   }
   // Called when the first live list request finishes: keep the splash up at least ~1.3 s overall,
@@ -480,6 +523,73 @@
   function homeReady() {
     var shown = window.performance && performance.now ? performance.now() : 0;
     setTimeout(hideSplash, Math.max(0, 1300 - shown));
+  }
+
+  /* ---------- Games & categories ---------- */
+  function openCategories() {
+    go('categories');
+    if (cats.items.length) { Nav.setScope(el('categories')); return; }
+    loadCategories(true);
+  }
+  function loadCategories(reset) {
+    if (cats.loading && !reset) return;
+    var my = ++cats.seq, grid = el('catGrid'), note = el('catNote');
+    if (reset) { cats.page = 1; cats.items = []; grid.innerHTML = ''; el('categoriesScroll').scrollTop = 0; }
+    cats.loading = true;
+    note.innerHTML = ''; note.textContent = I18n.t('loading');
+    Api.categories(cats.page, function (err, res) {
+      if (my !== cats.seq) return;
+      cats.loading = false;
+      note.textContent = '';
+      if (err) { note.appendChild(retryButton(function () { loadCategories(false); })); focusInto('categories'); return; }
+      var seen = {};
+      cats.items.forEach(function (x) { seen[x.id] = true; });
+      var fresh = res.items.filter(function (x) { return !seen[x.id]; });
+      cats.items = cats.items.concat(fresh);
+      cats.page = res.next || cats.page;
+      cats.hasMore = !!res.next && fresh.length > 0 && cats.items.length < MAX_CARDS;
+      fresh.forEach(function (x) { grid.appendChild(pagedCard(categoryCard(x), grid, cats, function () { loadCategories(false); })); });
+      observeImages(grid);
+      if (!cats.items.length) note.textContent = I18n.t('noResults');
+      focusInto('categories');
+    });
+  }
+  /* A screen that had nothing to focus yet (still loading): focus its first card once there is one. */
+  function focusInto(id) {
+    var f = Nav.getFocused();
+    if (current === id && (!f || !el(id).contains(f))) Nav.setScope(el(id));
+  }
+  /* One game / category: its live streams, most watched first, in the home filter's languages. */
+  function openCategory(c) {
+    if (current === 'search') Store.addSearch(searchQuery());
+    go('category');
+    cat.data = c;
+    el('catTitle').textContent = c.name;
+    el('catSub').textContent = langsSummary(home.filter);
+    loadCategoryLive(true);
+  }
+  function loadCategoryLive(reset) {
+    if (cat.loading && !reset) return;
+    var my = ++cat.seq, grid = el('catLiveGrid'), note = el('catLiveNote');
+    if (reset) { cat.cursor = null; cat.items = []; grid.innerHTML = ''; el('categoryScroll').scrollTop = 0; }
+    cat.loading = true;
+    note.innerHTML = ''; note.textContent = I18n.t('loading');
+    Api.livestreams({ langs: home.filter.langs, sort: 'viewers', category: cat.data.id }, cat.cursor, function (err, res) {
+      if (my !== cat.seq) return;
+      cat.loading = false;
+      note.textContent = '';
+      if (err) { note.appendChild(retryButton(function () { loadCategoryLive(false); })); focusInto('category'); return; }
+      var seen = {};
+      cat.items.forEach(function (x) { seen[x.slug] = true; });
+      var fresh = res.items.filter(function (x) { return !seen[x.slug]; });
+      cat.items = cat.items.concat(fresh);
+      cat.cursor = res.next;
+      cat.hasMore = !!res.next && fresh.length > 0 && cat.items.length < MAX_CARDS;
+      fresh.forEach(function (x) { grid.appendChild(pagedCard(liveCard(x), grid, cat, function () { loadCategoryLive(false); })); });
+      observeImages(grid);
+      if (!cat.items.length) note.textContent = I18n.t('noCategoryStreams');
+      focusInto('category');
+    });
   }
 
   /* ---------- Arama ---------- */
@@ -516,18 +626,29 @@
     var my = ++searchSeq;
     if (searchXhr) { try { searchXhr.abort(); } catch (e) {} }
     renderHistory();
-    if (q.length < 2) { grid.innerHTML = ''; note.textContent = Store.searches().length ? '' : I18n.t('searchHint'); return; }
+    var catBox = el('searchCats');
+    function clear() {
+      grid.innerHTML = ''; catBox.innerHTML = '';
+      el('searchCatWrap').classList.add('hidden'); el('searchChanTitle').classList.add('hidden');
+    }
+    if (q.length < 2) { clear(); note.textContent = Store.searches().length ? '' : I18n.t('searchHint'); return; }
     note.textContent = I18n.t('loading');
-    searchXhr = Api.search(q, function (err, list) {
+    searchXhr = Api.search(q, function (err, res) {
       if (my !== searchSeq) return;
-      grid.innerHTML = '';
+      clear();
       note.textContent = '';
       if (err) { note.appendChild(retryButton(runSearch)); return; }
-      if (!list.length) { note.textContent = I18n.t('noResults'); return; }
+      var list = res.channels, games = res.categories;
+      if (!list.length && !games.length) { note.textContent = I18n.t('noResults'); return; }
+      // Games first (most watched first, one row), then channels.
+      games.sort(function (a, b) { return b.viewers - a.viewers; });
+      games.slice(0, 6).forEach(function (x) { catBox.appendChild(categoryCard(x)); });
+      el('searchCatWrap').classList.toggle('hidden', !games.length);
+      el('searchChanTitle').classList.toggle('hidden', !games.length || !list.length);
       list.sort(function (a, b) { return (b.live - a.live) || (b.followers - a.followers); });
       list.forEach(function (x) { grid.appendChild(channelCard(x)); });
-      observeImages(grid);
-      if (current === 'search' && document.activeElement !== el('searchInput')) Nav.focus(grid.children[0]);
+      observeImages(el('searchScroll'));
+      if (current === 'search' && document.activeElement !== el('searchInput')) Nav.focus(catBox.children[0] || grid.children[0]);
     });
   }
   function openSearch() {
@@ -535,7 +656,7 @@
     var input = el('searchInput');
     input.placeholder = I18n.t('searchPlaceholder');
     renderHistory();
-    if (!el('searchGrid').children.length) el('searchNote').textContent = Store.searches().length ? '' : I18n.t('searchHint');
+    if (!el('searchGrid').children.length && !el('searchCats').children.length) el('searchNote').textContent = Store.searches().length ? '' : I18n.t('searchHint');
     // Klavyeyi kendiliğinden açma: Samsung klavyesi geç açılıyor ve son aramalardan birini seçerken
     // önce kapatmak gerekiyordu. Kutu odakta bekler; OK ile klavye açılır, ↓ ile son aramalara inilir.
     Nav.focus(input);
@@ -559,26 +680,33 @@
     el('btnFollow').classList.add('hidden');
     el('vodGrid').innerHTML = '';
     el('vodNote').textContent = I18n.t('loading');
+    el('clipGrid').innerHTML = '';
+    el('clipNote').textContent = I18n.t('loading');
+    showTab('vods');
+    stopWatch();
     var pending = 2;
-    function done() { if (--pending === 0 && my === chan.seq && current === 'channel') Nav.setScope(el('channel'), chan.data && chan.data.live && focusLive !== false ? el('btnWatchLive') : null); }
+    function done() { if (--pending === 0 && my === chan.seq && current === 'channel') Nav.setScope(el('channel'), chan.data && chan.data.live && focusLive !== false ? el('btnWatchLive') : el('btnFollow')); }
 
     Api.channel(slug, function (err, ch) {
       if (my !== chan.seq) return;
       if (err) { el('chMeta').textContent = ''; el('chMeta').appendChild(retryButton(function () { back(); openChannel(slug, focusLive); })); done(); return; }
       chan.data = ch;
-      if (ch.pic) el('chAvatar').src = ch.pic;
-      el('chName').textContent = ch.name;
-      el('chLive').textContent = I18n.t('live');
-      el('chLive').classList.toggle('hidden', !ch.live);
-      el('chMeta').textContent = I18n.t('followers', { n: I18n.number(ch.followers) }) +
-        (ch.live ? ' · ' + I18n.t('viewers', { n: I18n.number(ch.viewers) }) + (ch.category ? ' · ' + ch.category : '') : ' · ' + I18n.t('offline'));
-      el('chTitle').textContent = ch.title;
-      el('btnWatchLive').classList.toggle('hidden', !ch.live);
-      if (ch.live && Date.now() - ch.fetchedAt < 90000) Player.prefetch(ch.playbackUrl);
+      showChannelInfo(ch);
       el('btnFollow').classList.remove('hidden');
       updateFollowBtn();
       Store.addRecent({ slug: ch.slug, name: ch.name, pic: ch.pic });
+      if (!ch.live) startWatch(slug, my);
       done();
+    });
+    // Clips come last and don't hold up the first focus.
+    Api.clips(slug, function (err, list) {
+      if (my !== chan.seq) return;
+      var grid = el('clipGrid'), note = el('clipNote');
+      note.textContent = '';
+      if (err) { note.appendChild(retryButton(function () { back(); openChannel(slug, focusLive); })); return; }
+      list.forEach(function (v) { grid.appendChild(clipCard(v)); });
+      observeImages(grid);
+      if (!list.length) note.textContent = I18n.t('noClips');
     });
     Api.videos(slug, function (err, vods) {
       if (my !== chan.seq) return;
@@ -589,6 +717,55 @@
       observeImages(el('vodGrid'));
       if (!vods.length) el('vodNote').textContent = I18n.t('noVods');
       done();
+    });
+  }
+  /* Past broadcasts or clips: only one list is on the page, so clips don't sit below 20+ broadcasts. */
+  function showTab(which) {
+    var clips = which === 'clips';
+    el('tabVods').classList.toggle('active', !clips);
+    el('tabClips').classList.toggle('active', clips);
+    el('vodSection').classList.toggle('hidden', clips);
+    el('clipSection').classList.toggle('hidden', !clips);
+    checkLazy(el('channelScroll'));  // the list just shown may have images still to load
+  }
+  function showChannelInfo(ch) {
+    if (ch.pic) el('chAvatar').src = ch.pic;
+    el('chName').textContent = ch.name;
+    el('chLive').textContent = I18n.t('live');
+    el('chLive').classList.toggle('hidden', !ch.live);
+    el('chMeta').textContent = I18n.t('followers', { n: I18n.number(ch.followers) }) +
+      (ch.live ? ' · ' + I18n.t('viewers', { n: I18n.number(ch.viewers) }) + (ch.category ? ' · ' + ch.category : '') : ' · ' + I18n.t('offline'));
+    el('chTitle').textContent = ch.title;
+    el('btnWatchLive').classList.toggle('hidden', !ch.live);
+    if (ch.live && Date.now() - ch.fetchedAt < 90000) Player.prefetch(ch.playbackUrl);
+  }
+
+  /* Offline channel: while its page is open (and the app is in front), ask every 15 s whether the
+     stream has started; one small request each time. When it has, the page switches to live and a
+     message says so. Nothing starts playing by itself. */
+  var WATCH_MS = 15000, watchTimer = null;
+  function startWatch(slug, my) {
+    chan.watching = my;
+    clearTimeout(watchTimer);
+    watchTimer = setTimeout(function () { watchTick(slug, my); }, WATCH_MS);
+  }
+  function stopWatch() { chan.watching = 0; clearTimeout(watchTimer); }
+  function watchTick(slug, my) {
+    if (chan.watching !== my || chan.seq !== my) return;
+    if (current !== 'channel' || document.hidden) { startWatch(slug, my); return; }  // e.g. watching a past broadcast
+    Api.livestream(slug, function (err, ls) {
+      if (chan.watching !== my || chan.seq !== my) return;
+      if (err || !ls) { startWatch(slug, my); return; }
+      Api.channel(slug, function (e2, ch) {
+        if (chan.watching !== my || chan.seq !== my) return;
+        if (e2 || !ch.live) { startWatch(slug, my); return; }  // stream link not ready yet: next round
+        stopWatch();
+        chan.data = ch;
+        showChannelInfo(ch);
+        var f = Nav.getFocused();
+        if (current === 'channel' && (!f || f === el('btnFollow'))) Nav.focus(el('btnWatchLive'));
+        Player.toast(I18n.t('wentLive', { name: ch.name }), 6000);
+      }, true);
     });
   }
   function updateFollowBtn() {
@@ -656,6 +833,70 @@
     }, back);
   }
 
+  function playClip(v) {
+    go('player');
+    enteredPlayer();
+    Player.open({
+      kind: 'vod', url: v.source, vodId: null, duration: v.duration,  // short: no resume point
+      channelName: chan.data ? chan.data.name : chan.slug, title: v.title
+    }, back);
+  }
+
+  /* ---------- Version & update notice ----------
+     At most once a day, after start-up, the newest release on GitHub is compared with this app's
+     version. A newer one is announced once (a message on screen); Settings > About shows it too. */
+  var appVersion = '', UPDATE_MS = 86400000;
+  function readVersion(cb) {
+    try { var v = tizen.application.getAppInfo().version; if (v) { cb(v); return; } } catch (e) {}
+    try {
+      var x = new XMLHttpRequest();
+      x.open('GET', 'config.xml', true);
+      x.onreadystatechange = function () {
+        if (x.readyState !== 4) return;
+        var m = /<widget[^>]*\sversion="([^"]+)"/.exec(x.responseText || '');
+        cb(m ? m[1] : '');
+      };
+      x.send();
+    } catch (e) { cb(''); }
+  }
+  function isNewer(a, b) {
+    if (!a || !b) return false;
+    var x = String(a).replace(/^v/i, '').split('.'), y = String(b).replace(/^v/i, '').split('.');
+    for (var i = 0; i < Math.max(x.length, y.length); i++) {
+      var p = parseInt(x[i], 10) || 0, q = parseInt(y[i], 10) || 0;
+      if (p !== q) return p > q;
+    }
+    return false;
+  }
+  function updateInfo() { return Store.get('kickizle.update', null) || {}; }
+  function renderAbout() {
+    var u = updateInfo(), st = el('aboutStatus'), fresh = isNewer(u.latest, appVersion);
+    el('aboutVersion').textContent = appVersion ? I18n.t('versionLabel', { v: appVersion }) : '';
+    st.textContent = fresh ? I18n.t('updateAvailable', { v: u.latest }) : (u.latest && appVersion ? I18n.t('upToDate') : '');
+    st.classList.toggle('new', fresh);
+    el('btnSettings').classList.toggle('has-update', fresh);  // green dot on the home screen's ⚙
+  }
+  function checkUpdate(force) {
+    if (!appVersion) return;
+    var u = updateInfo();
+    function decide() {
+      renderAbout();
+      if (isNewer(u.latest, appVersion) && u.notified !== u.latest) {
+        u.notified = u.latest;
+        Store.set('kickizle.update', u);
+        Player.toast(I18n.t('updateAvailable', { v: u.latest }), 8000);
+      }
+    }
+    if (!force && u.at && Date.now() - u.at < UPDATE_MS) { decide(); return; }
+    Api.latestRelease(function (tag) {
+      if (!tag) { renderAbout(); return; }  // offline / rate-limited: try again next start
+      u.at = Date.now();
+      u.latest = tag.replace(/^v/i, '');
+      Store.set('kickizle.update', u);
+      decide();
+    });
+  }
+
   /* ---------- Tuşlar ---------- */
   function onKey(e) {
     var code = e.keyCode;
@@ -714,12 +955,17 @@
     } else renderFollowed(true);
 
     el('btnSearch').onclick = openSearch;
+    el('btnCategories').onclick = openCategories;
+    el('aboutRow').onclick = function () { el('aboutStatus').textContent = I18n.t('loading'); checkUpdate(true); };
+    readVersion(function (v) { appVersion = v; renderAbout(); });
     el('btnFilter').onclick = openFilter;
     el('filterApply').onclick = function () { closeFilter(true); };
     el('filterCancel').onclick = function () { closeFilter(false); };
     el('btnSettings').onclick = openSettings;
     el('btnWatchLive').onclick = watchLive;
     el('btnFollow').onclick = toggleFollow;
+    el('tabVods').onclick = function () { showTab('vods'); };
+    el('tabClips').onclick = function () { showTab('clips'); };
     el('searchInput').addEventListener('input', function () { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 600); });
 
     document.addEventListener('keydown', onKey);

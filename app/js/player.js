@@ -67,12 +67,16 @@ var Player = (function () {
   }
   function qualityLabel(i) {
     var l = levels[i]; if (!l) return '';
+    // A single-quality playlist (clips) doesn't state its size: take it from the video itself.
+    var h = l.height || (levels.length === 1 ? video.videoHeight : 0);
+    if (!h) return '';
     var fps = l.frameRate && l.frameRate > 31 ? Math.round(l.frameRate) : '';
-    return l.height + 'p' + fps;
+    return h + 'p' + fps;
   }
   function updateQualityText() {
     if (!hls) { el('osdQuality').textContent = ''; return; }
     var cur = hls.currentLevel, txt = cur >= 0 ? qualityLabel(cur) : '';
+    if (levels.length <= 1) { el('osdQuality').textContent = qualityLabel(0); return; }  // nothing to choose
     el('osdQuality').textContent = hls.autoLevelEnabled ? I18n.t('auto') + (txt ? ' (' + txt + ')' : '') : txt;
   }
 
@@ -298,6 +302,8 @@ var Player = (function () {
       lastProgressAt = now;
       updateProgress();
     });
+    // The picture size is known (or changed): single-quality clips show it as their quality.
+    video.addEventListener('resize', function () { if (opts && levels.length === 1) updateQualityText(); });
     video.addEventListener('ended', function () {
       if (!opts) return;
       if (opts.rewind) { rewindReachedEnd(); return; }
@@ -384,7 +390,7 @@ var Player = (function () {
 
   /* ---------- Kalite menüsü ---------- */
   function openMenu() {
-    if (!hls || !levels.length) return;
+    if (!hls || levels.length < 2) return;  // one quality only (clips): no menu
     var listEl = el('qualityList'), selected = null;
     listEl.innerHTML = '';
     var order = levels.map(function (l, i) { return i; }).sort(function (a, b) { return levels[b].height - levels[a].height || levels[b].bitrate - levels[a].bitrate; });
@@ -606,12 +612,12 @@ var Player = (function () {
   }
 
   var toastTimer = null;
-  function toast(msg) {
+  function toast(msg, ms) {
     var t = el('toast');
     t.textContent = msg;
     t.classList.remove('hidden');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.add('hidden'); }, 3500);
+    toastTimer = setTimeout(function () { t.classList.add('hidden'); }, ms || 3500);
   }
 
   return { open: open, stop: stop, preload: preload, prefetch: prefetchManifest, handleKey: handleKey,

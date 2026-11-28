@@ -93,6 +93,12 @@ var Nav = (function () {
       var score = vertical ? c.cross : c.main + c.cross * 2.5;
       if (score < bestScore) { bestScore = score; best = c.el; }
     });
+    // Entering a tab row from outside (e.g. up from a list): land on the selected tab, not the nearest.
+    var row = best.parentNode;
+    if (vertical && row && row.classList.contains('tabs') && !row.contains(focused)) {
+      var sel = row.querySelector('.active');
+      if (sel) best = sel;
+    }
     focus(best);
     return true;
   }
@@ -104,7 +110,7 @@ var Nav = (function () {
     if (preferred && indexOfEl(list, preferred) >= 0) focus(preferred);
     else if (focused && indexOfEl(list, focused) >= 0) focus(focused);
     else if (list.length) focus(list[0].el);
-    else focused = null;
+    else { if (focused) focused.classList.remove('focused'); focused = null; }  // nothing to focus yet
   }
 
   function isBack(code) { return code === KEY.BACK || code === KEY.ESC || code === KEY.BACKSPACE; }
