@@ -121,17 +121,32 @@ var Api = (function () {
     });
   }
 
+  /* Past-broadcast preview. Since late Nov 2026 Kick's API gives every past broadcast the same
+     image (the channel's current thumbnail). Each broadcast still has its own preview on
+     images.kick.com, addressed by the two IDs in its video URL:
+       stream.kick.com/.../ivs/v1/<account>/<contentId>/<y>/<m>/<d>/<h>/<min>/<sessionId>/media/hls/master.m3u8
+       -> images.kick.com/video_thumbnails/<contentId>/<sessionId>/480.webp
+     The API's image is kept as a fallback layer under it. */
+  function vodThumbs(x) {
+    var api = pickImage(x.thumbnail, 480);
+    if (/images\.kick\.com\/video_thumbnails\//.test(api)) return { thumb: api, fallback: '' };  // already per-broadcast
+    var m = /\/ivs\/v1\/\d+\/([A-Za-z0-9]+)\/\d+\/\d+\/\d+\/\d+\/\d+\/([A-Za-z0-9]+)\/media\//.exec(x.source || '');
+    if (!m) return { thumb: api, fallback: '' };
+    return { thumb: 'https://images.kick.com/video_thumbnails/' + m[1] + '/' + m[2] + '/480.webp', fallback: api };
+  }
+
   function videos(slug, cb) {
     cachedGet('https://kick.com/api/v2/channels/' + encodeURIComponent(slug) + '/videos', function (err, d) {
       if (err) { cb(err); return; }
       var list = Array.isArray(d) ? d : (d && d.data) || [];
       cb(null, list.map(function (x) {
+        var th = vodThumbs(x);
         return {
           id: (x.video && x.video.uuid) || String(x.id), title: x.session_title || '',
           source: x.source || '', duration: (x.duration || 0) / 1000, ongoing: !!x.is_live,
           created: x.start_time || x.created_at || '', views: (x.video && x.video.views) || x.views || 0,
           category: x.categories && x.categories[0] ? x.categories[0].name : '',
-          thumb: pickImage(x.thumbnail, 480)
+          thumb: th.thumb, thumbFallback: th.fallback
         };
       }).filter(function (x) { return !!x.source; }));
     });
@@ -147,6 +162,18 @@ var Api = (function () {
           followers: c.followers_count || c.followersCount || 0, live: !!(c.isLive || c.is_live)
         };
       }).filter(function (x) { return !!x.slug; }));
+    });
+  }
+
+  /* Recent chat messages of a live channel (Kick returns the last ~25, newest first). */
+  function chatHistory(channelId, cb) {
+    get('https://kick.com/api/v2/channels/' + encodeURIComponent(channelId) + '/messages', function (err, d) {
+      if (err) { cb(err); return; }
+      var list = (d && d.data && d.data.messages) || [];
+      cb(null, list.map(function (m) {
+        var s = m.sender || {};
+        return { id: m.id, user: s.username || '?', color: (s.identity || {}).color, content: m.content || '' };
+      }).filter(function (m) { return !!m.content; }));
     });
   }
 
@@ -173,6 +200,6 @@ var Api = (function () {
   return {
     DEV: DEV, proxied: proxied,
     setSimulate: function (mode) { if (DEV) simulate = mode || ''; },
-    livestreams: livestreams, channel: channel, livestream: livestream, videos: videos, search: search, chatConfig: chatConfig
+    livestreams: livestreams, channel: channel, livestream: livestream, videos: videos, chatHistory: chatHistory, search: search, chatConfig: chatConfig
   };
 }());

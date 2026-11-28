@@ -32,12 +32,19 @@
   /* Lazy images: cards only remember their image URL (data-bg) and load it once they come near the
      visible part of their scroll area: up to ~1 screen below and a little above. Checked after each
      list update and each focus move, so it needs no IntersectionObserver and works on any engine. */
-  function bg(node, url) { if (url) node.setAttribute('data-bg', String(url)); }
+  function bg(node, url, fallback) {
+    if (url) node.setAttribute('data-bg', String(url));
+    if (url && fallback && fallback !== url) node.setAttribute('data-bg2', String(fallback));
+  }
+  function cssUrl(u) { return 'url("' + String(u).replace(/"/g, '%22') + '")'; }
   function loadBg(node) {
     var u = node.getAttribute('data-bg');
     if (!u) return;
-    node.style.backgroundImage = 'url("' + u.replace(/"/g, '%22') + '")';
+    var f = node.getAttribute('data-bg2');
+    // With a fallback, both are layers: the first on top; if it fails to load, the second shows.
+    node.style.backgroundImage = cssUrl(u) + (f ? ', ' + cssUrl(f) : '');
     node.removeAttribute('data-bg');
+    node.removeAttribute('data-bg2');
   }
   function scrollerOf(node) {
     while (node && node !== document && !(node.classList && node.classList.contains('scroller'))) node = node.parentNode;
@@ -124,8 +131,12 @@
   function unloadImages(container) {
     var nodes = container.querySelectorAll('[style*="background-image"]');
     for (var i = 0; i < nodes.length; i++) {
-      var m = /url\(["']?([^"')]+)["']?\)/.exec(nodes[i].style.backgroundImage);
-      if (m) { nodes[i].setAttribute('data-bg', m[1]); nodes[i].style.backgroundImage = ''; }
+      var re = /url\(["']?([^"')]+)["']?\)/g, m1 = re.exec(nodes[i].style.backgroundImage), m2 = m1 && re.exec(nodes[i].style.backgroundImage);
+      if (m1) {
+        nodes[i].setAttribute('data-bg', m1[1]);
+        if (m2) nodes[i].setAttribute('data-bg2', m2[1]);
+        nodes[i].style.backgroundImage = '';
+      }
     }
   }
   function focusPath(node) {
@@ -202,7 +213,7 @@
   }
   function vodCard(v) {
     var c = make('div', 'card focusable'), th = make('div', 'thumb');
-    bg(th, v.thumb);
+    bg(th, v.thumb, v.thumbFallback);
     if (v.ongoing) th.appendChild(make('span', 'badge ongoing', I18n.t('ongoing')));
     else if (v.duration) th.appendChild(make('span', 'corner', fmtDur(v.duration)));
     var r = Store.getResume(v.id);

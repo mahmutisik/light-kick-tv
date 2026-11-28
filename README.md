@@ -27,7 +27,7 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
 - **Resume** past broadcasts where you left off, with a progress bar on each card
 - **Quality menu** (Automatic / 1080p60 / 720p60 / …). Automatic starts at the best quality and steps
   down only if the network can't keep up. Your choice is remembered.
-- **Live chat** (read-only) with Kick emotes, toggled with ↓
+- **Live chat** (read-only) with Kick emotes, toggled with ↓; opens with the last ~25 messages
 - **Follow channels** without a Kick account. Followed channels that are live appear at the top of
   the home screen.
 - **Recently watched** channels

@@ -2,7 +2,7 @@
 var Chat = (function () {
   'use strict';
   var socket = null, session = 0, retryTimer = null, list, stateEl, MAX = 50;
-  var queue = [], flushTimer = null;
+  var queue = [], flushTimer = null, seen = {};
 
   function el(id) { return document.getElementById(id); }
   function escapeHtml(s) {
@@ -19,8 +19,19 @@ var Chat = (function () {
   }
   function setState(key) { if (stateEl) stateEl.textContent = '· ' + I18n.t(key); }
 
+  function line(m) {
+    var div = document.createElement('div');
+    div.className = 'msg';
+    var safeColor = /^#[0-9a-fA-F]{3,8}$/.test(m.color || '') ? m.color : '#53fc18';
+    div.innerHTML = '<span class="user" style="color:' + safeColor + '">' + escapeHtml(m.user) + '</span>: ' + render(m.content);
+    var imgs = div.getElementsByTagName('img');
+    for (var i = 0; i < imgs.length; i++) imgs[i].onerror = function () { this.parentNode.replaceChild(document.createTextNode(this.alt), this); };
+    return div;
+  }
+
   /* Mesajları tek tek değil, yarım saniyede bir toplu ekle (yoğun sohbette TV'yi yormasın). */
-  function add(user, color, content) {
+  function add(user, color, content, id) {
+    if (id) { if (seen[id]) return; seen[id] = 1; }
     queue.push({ user: user, color: color, content: content });
     if (queue.length > MAX) queue.splice(0, queue.length - MAX);
     if (!flushTimer) flushTimer = setTimeout(flush, 500);
@@ -30,15 +41,7 @@ var Chat = (function () {
     if (!list || !queue.length) return;
     var frag = document.createDocumentFragment(), items = queue;
     queue = [];
-    for (var n = 0; n < items.length; n++) {
-      var m = items[n], div = document.createElement('div');
-      div.className = 'msg';
-      var safeColor = /^#[0-9a-fA-F]{3,8}$/.test(m.color || '') ? m.color : '#53fc18';
-      div.innerHTML = '<span class="user" style="color:' + safeColor + '">' + escapeHtml(m.user) + '</span>: ' + render(m.content);
-      var imgs = div.getElementsByTagName('img');
-      for (var i = 0; i < imgs.length; i++) imgs[i].onerror = function () { this.parentNode.replaceChild(document.createTextNode(this.alt), this); };
-      frag.appendChild(div);
-    }
+    for (var n = 0; n < items.length; n++) frag.appendChild(line(items[n]));
     list.appendChild(frag);
     while (list.children.length > MAX) list.removeChild(list.firstChild);
   }
@@ -49,7 +52,23 @@ var Chat = (function () {
     list.innerHTML = '';
     if (!chatroomId) { setState('chatOffline'); return; }
     var my = ++session, attempt = 0;
+    seen = {};
     setState('chatConnecting');
+
+    // The last ~25 messages, so the chat doesn't start empty. Shown oldest-to-newest above anything
+    // that already arrived live; messages seen both ways appear once.
+    Api.chatHistory(channelId, function (err, msgs) {
+      if (my !== session || err || !msgs.length) return;
+      var frag = document.createDocumentFragment();
+      for (var i = msgs.length - 1; i >= 0; i--) {
+        var m = msgs[i];
+        if (m.id && seen[m.id]) continue;
+        if (m.id) seen[m.id] = 1;
+        frag.appendChild(line(m));
+      }
+      list.insertBefore(frag, list.firstChild);
+      while (list.children.length > MAX) list.removeChild(list.firstChild);
+    });
 
     function open(cfg) {
       if (my !== session) return;
@@ -68,7 +87,7 @@ var Chat = (function () {
         } else if (p.event === 'App\\Events\\ChatMessageEvent') {
           var d; try { d = typeof p.data === 'string' ? JSON.parse(p.data) : p.data; } catch (e) { return; }
           var s = d.sender || {}, idt = s.identity || {};
-          if (d.content) add(s.username || '?', idt.color, d.content);
+          if (d.content) add(s.username || '?', idt.color, d.content, d.id);
         }
       };
       ws.onclose = function () { if (my === session) retry(cfg); };
