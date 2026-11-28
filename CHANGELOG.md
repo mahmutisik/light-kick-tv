@@ -5,6 +5,22 @@ File** → `LightKickTV.wgt` from the release. Followed channels, resume points 
 
 <!-- Each release's notes on GitHub are taken from its section below (scripts/release_notes.py). -->
 
+## v1.0.9
+
+- **Back cancels a seek**: pressing Back while seeking (before playing on) returns to where the seek
+  started and carries on as it was, playing or paused. The video around that spot is kept while
+  seeking, so it continues at once. Back again leaves the player. While seeking, the hint line says
+  so ("OK play from here · Back: cancel seek").
+- **No accidental jump to live**: while rewinding, seeking to the end no longer switches to live
+  on its own. It stops at the end with "Press OK to go live"; OK goes live, ← seeks back into the
+  recording. (Playing up to the end still rejoins live as before.)
+- **Correct bar when rewind opens**: while the recording is opening, the progress bar and the
+  "behind live" time now show the requested spot right away, instead of an old position left over
+  from the last video (or the live stream's length) for a few seconds.
+- **Fine seeking after holding**: holding ← / → still speeds up (10 s → 30 s → 1 min → 3 min), but
+  letting go now resets it, and separate presses always move 10 s. Before, presses right after a
+  long hold kept jumping minutes at a time, and quick taps sped up too.
+
 ## v1.0.8
 
 - **Continue watching**: the home screen shows your last 4 half-watched past broadcasts in one row;

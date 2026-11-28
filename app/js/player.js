@@ -55,6 +55,7 @@ var Player = (function () {
      its resume point, that point (the video reads 0 until it gets there). */
   var startTarget = null;
   function position() {
+    if (liveArmed) return duration();
     if (pendingSeek !== null) return pendingSeek;
     if (startTarget !== null) return startTarget;
     return video.currentTime;
@@ -66,7 +67,12 @@ var Player = (function () {
     if (!isVod()) return;
     // Sarma sürerken her zaman hedef noktayı göster (eski konuma geri sıçramasın).
     var d = duration(), t = at !== undefined && at !== null ? at : position();
-    var pct = d ? Math.min(100, t / d * 100) : 0;
+    // Rewind still opening: the recording's position isn't known yet; show the requested distance
+    // from its end (from the estimated length) instead of an old or empty bar.
+    // (The video element still holds the live stream then, so its own length means nothing.)
+    var opening = opts.rewind && rewindLoading;
+    if (opening) { d = opts.duration || 0; t = Math.max(0, d - rewindTarget); }
+    var pct = d ? Math.min(100, t / d * 100) : (opening ? 100 : 0);
     el('progressFill').style.width = pct + '%';
     el('progressKnob').style.left = pct + '%';
     var buf = 0;
@@ -74,6 +80,8 @@ var Player = (function () {
     el('progressBuffer').style.width = (d ? Math.min(100, buf / d * 100) : 0) + '%';
     var label = fmt(t) + ' / ' + fmt(d);
     if (opts.rewind && rewind) label = I18n.t('behindLive', { t: fmt(Math.max(0, d - t) + (Date.now() - rewind.snapAt) / 1000 + RECORD_LAG_S) });
+    if (liveArmed) { el('osdTime').textContent = I18n.t('okForLive'); return; }
+    if (opening) { el('osdTime').textContent = I18n.t('behindLive', { t: fmt(rewindTarget + RECORD_LAG_S) }); return; }
     el('osdTime').textContent = label + (video.paused ? '  ·  ' + I18n.t('paused') : '');
   }
   function qualityLabel(i) {
@@ -303,7 +311,7 @@ var Player = (function () {
     video.addEventListener('seeked', reachedStart);
     video.addEventListener('playing', reachedStart);
     video.addEventListener('playing', function () { clearTimeout(waitTimer); retries = 0; hideStatus(); el('pauseIcon').classList.add('hidden'); showOsd(); });
-    video.addEventListener('play', function () { frameOnly = false; el('pauseIcon').classList.add('hidden'); resumeLoading(); });
+    video.addEventListener('play', function () { endSeekSession(); frameOnly = false; el('pauseIcon').classList.add('hidden'); resumeLoading(); });
     video.addEventListener('pause', function () {
       if (!opts || video.ended) return;
       hideStatus();  // duraklatınca dönen arabellek göstergesini kaldır
@@ -336,15 +344,24 @@ var Player = (function () {
   }
 
   /* ---------- Sarma ---------- */
+  /* Seek step: 10 s per press. Only while ← / → is held down (the remote repeats the key) do the
+     steps grow to 30 s, 1 min and 3 min; letting go resets it, so the next presses fine-tune in
+     10 s steps again. (If a TV sent no key-up, quick presses would still count as held.) */
+  var seekKey = null, seekRepeat = false;
+  document.addEventListener('keyup', function (e) {
+    if (e.keyCode === seekKey) { seekKey = null; seekStreak = 0; }
+  }, true);
   function seekStep() {
     var now = Date.now();
-    seekStreak = now - lastSeekAt < 700 ? seekStreak + 1 : 0;
+    seekStreak = seekRepeat ? seekStreak + 1 : 0;
+    seekRepeat = false;
     lastSeekAt = now;
     return seekStreak < 4 ? 10 : seekStreak < 10 ? 30 : seekStreak < 20 ? 60 : 180;
   }
   /* Presses while the recording is still opening: move the target, show how far back. */
   function adjustRewind(dir) {
-    if (dir > 0 && rewindTarget <= 10) { goLive(); return; }  // → at the nearest point: back to live
+    if (dir > 0 && rewindTarget <= 10) { if (opts.rewind) armLive(); return; }  // → at the nearest point: offer live
+    if (liveArmed) disarmLive();
     rewindTarget = Math.max(10, rewindTarget - dir * seekStep());
     el('osdTime').textContent = I18n.t('behindLive', { t: fmt(rewindTarget + RECORD_LAG_S) });
     showOsd(true);
@@ -352,9 +369,15 @@ var Player = (function () {
   function seekBy(dir) {
     if (!isVod()) return;
     if (opts.rewind && rewindLoading) { adjustRewind(dir); return; }
+    startSeekSession();
     var step = seekStep();
-    var base = position(), d = duration();
-    if (opts.rewind && dir > 0 && d && base + step >= d - 3) { goLive(); return; }
+    var d = duration(), base = position();
+    if (liveArmed) {
+      if (dir > 0) { showOsd(true); return; }  // already at the end: OK goes live
+      disarmLive();
+      base = Math.max(0, d - 3);  // seek back from the end
+    }
+    if (opts.rewind && dir > 0 && d && base + step >= d - 3) { armLive(); return; }
     pendingSeek = Math.max(0, Math.min(d ? d - 3 : base + step, base + dir * step));
     // Seeking while it is still opening: it opens paused on the target's frame, like any other seek.
     if (video.readyState < 1 && !startPaused) { startPaused = true; setFrameBuffer(true); }
@@ -373,6 +396,40 @@ var Player = (function () {
     clearTimeout(seekTimer);
     // Tuşa basmayı bırakıp SEEK_SETTLE_MS beklenince o noktanın tek karesini getir; OK ile oradan devam edilir.
     seekTimer = setTimeout(settleSeek, SEEK_SETTLE_MS);
+  }
+  /* Back while seeking cancels it: playback returns to where the seek started and carries on as it
+     was (playing or paused). The old spot's buffered video is kept during a seek, so it continues
+     at once. A second Back leaves the player. The seek "session" ends when playback resumes. */
+  var seekOrigin = null, seekOriginPlaying = false, savedBackBuffer = null;
+  function startSeekSession() {
+    if (seekOrigin !== null) return;
+    seekOrigin = position();
+    seekOriginPlaying = !video.paused || (video.readyState < 1 && !startPaused);  // still opening: it was going to play
+    if (hls && savedBackBuffer === null) { savedBackBuffer = hls.config.backBufferLength; hls.config.backBufferLength = Infinity; }
+    el('osdHint').textContent = I18n.t('hintSeeking');  // while seeking, Back cancels instead of leaving
+  }
+  function endSeekSession() {
+    if (seekOrigin !== null && opts) el('osdHint').textContent = I18n.t(opts.rewind ? 'hintRewind' : isVod() ? 'hintVod' : 'hintLive');
+    seekOrigin = null;
+    if (hls && savedBackBuffer !== null) hls.config.backBufferLength = savedBackBuffer;
+    savedBackBuffer = null;
+  }
+  function cancelSeek() {
+    var target = seekOrigin, resume = seekOriginPlaying;
+    clearTimeout(seekTimer);
+    pendingSeek = null;
+    disarmLive();
+    frameOnly = false;
+    startPaused = false;
+    setFrameBuffer(false);
+    hideStatus();
+    if (hls) { hls.stopLoad(); loadingStopped = false; hls.startLoad(target); }  // drops the frame download, keeps the buffer
+    placeAt(target);
+    endSeekSession();
+    if (resume) play();
+    else { el('pauseIcon').classList.remove('hidden'); if (video.readyState >= 1) stopLoading(); }
+    updateProgress();
+    showOsd(true);
   }
   /* The seek target is chosen: fetch just that frame (paused) or jump there (playing). */
   function settleSeek() {
@@ -500,6 +557,8 @@ var Player = (function () {
     if (rewindBusy) { adjustRewind(-1); return; }  // already opening: go further back
     rewindBusy = true;
     rewindLoading = true;
+    liveArmed = false;
+    seekOrigin = null; savedBackBuffer = null;
     rewindTarget = back;
     seekStep();  // start the press streak so held presses accelerate
     status('loadingStream', '');
@@ -513,6 +572,7 @@ var Player = (function () {
       var started = startedAt ? Date.parse(String(startedAt).replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(startedAt) ? '' : 'Z')) : NaN;
       var length = isNaN(started) ? 0 : (Date.now() - started) / 1000 - RECORD_LAG_S;
       opts.liveUrl = opts.url; opts.url = src; opts.kind = 'vod'; opts.rewind = true;
+      opts.duration = length > 0 ? length : 0;  // until the recording's real length is known
       rewind = { snapAt: Date.now() };
       pendingSeek = null; clearTimeout(seekTimer);
       // The chat belongs to the live moment, not to what you're rewatching: close it (the saved
@@ -520,15 +580,36 @@ var Player = (function () {
       if (chatOn) { chatOn = false; applyChat(); Chat.disconnect(); }
       applyMode();
       showOsd(true);
+      updateProgress();
       load(src, Math.max(0, length - rewindTarget), true);
     });
   }
+  /* Rewinding and seeking all the way to the end: instead of switching to live right away (easy to
+     do by accident), stop at the end and show "Press OK to go live". OK goes live; ← seeks back. */
+  var liveArmed = false;
+  function armLive() {
+    liveArmed = true;
+    clearTimeout(seekTimer); pendingSeek = null;
+    if (!video.paused) video.pause();
+    var badge = el('osdLive');
+    badge.textContent = I18n.t('live'); badge.className = 'badge live';
+    updateProgress();
+    showOsd(true);
+  }
+  function disarmLive() {
+    if (!liveArmed) return;
+    liveArmed = false;
+    applyMode();
+    if (seekOrigin !== null) el('osdHint').textContent = I18n.t('hintSeeking');
+  }
   /* Back to the live stream (fresh link: the old one may have expired while rewinding). */
   function goLive() {
+    liveArmed = false;
+    seekOrigin = null; savedBackBuffer = null;  // the recording's player is replaced
     if (!opts || !opts.rewind) return;
     clearTimeout(seekTimer); pendingSeek = null; frameOnly = false; startPaused = false;
     rewindLoading = false;
-    opts.kind = 'live'; opts.rewind = false; rewind = null;
+    opts.kind = 'live'; opts.rewind = false; rewind = null; opts.duration = 0;
     if (Store.get('kickizle.chat', true) && !chatOn) { chatOn = true; applyChat(); Chat.connect(opts.channelId, opts.chatroomId); }
     el('pauseIcon').classList.add('hidden');
     applyMode();
@@ -560,6 +641,7 @@ var Player = (function () {
     el('qualityMenu').classList.add('hidden');
     el('pauseIcon').classList.add('hidden');
     el('osdChannel').textContent = o.channelName || '';
+    el('progressFill').style.width = el('progressKnob').style.left = el('progressBuffer').style.width = '0%';  // no bar left over from the last video
     el('osdTitle').textContent = o.title || '';
     rewind = null;
     applyMode();  // badge, progress bar and hint for live / past broadcast
@@ -594,7 +676,8 @@ var Player = (function () {
     Chat.disconnect();
     destroyHls();
     try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
-    rewind = null; rewindBusy = false; rewindLoading = false; startPaused = false; startTarget = null;
+    rewind = null; rewindBusy = false; rewindLoading = false; startPaused = false; startTarget = null; liveArmed = false;
+    seekOrigin = null; savedBackBuffer = null;
     opts = null;
   }
   function exit() { stop(); if (onExit) onExit(); }
@@ -633,6 +716,7 @@ var Player = (function () {
   }
 
   function togglePause() {
+    if (liveArmed) { goLive(); return; }
     if (!isVod()) { if (video.paused) play(); return; }
     if (commitSeek()) { play(); return; }
     if (video.paused) play(); else video.pause();
@@ -652,16 +736,22 @@ var Player = (function () {
     var wasHidden = !osdVisible();
     showOsd();
     if (wasHidden && (code === K.UP || code === K.LEFT || code === K.RIGHT)) return true;
+    if (code === K.LEFT || code === K.RW || code === K.RIGHT || code === K.FF) {
+      seekRepeat = seekKey === code && Date.now() - lastSeekAt < 600;  // the same key, still held
+      seekKey = code;
+    } else seekKey = null;
     switch (code) {
       case K.UP: openMenu(); break;
       case K.DOWN: toggleChat(); break;
       case K.LEFT: case K.RW: if (opts.kind === 'live') enterRewind(10); else seekBy(-1); break;
       case K.RIGHT: case K.FF: seekBy(1); break;
       case K.ENTER: case K.PLAYPAUSE: case K.SPACE: togglePause(); break;
-      case K.PLAY: commitSeek(); play(); break;
+      case K.PLAY: if (liveArmed) goLive(); else { commitSeek(); play(); } break;
       case K.PAUSE: if (isVod()) video.pause(); break;
       case K.STOP: exit(); break;
-      default: if (Nav.isBack(code)) exit(); else return false;
+      default:
+        if (!Nav.isBack(code)) return false;
+        if (seekOrigin !== null && isVod()) cancelSeek(); else exit();
     }
     return true;
   }

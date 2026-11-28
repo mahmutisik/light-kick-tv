@@ -2,6 +2,41 @@
    a matching section to CHANGELOG.md. Languages missing from an entry fall back to English. */
 var WhatsNew = [
   {
+    v: '1.0.9',
+    items: {
+      en: ['Seeking: holding ← / → speeds up; separate presses always move 10 s, so you can fine-tune after a long jump.',
+        'Rewinding: seeking to the end no longer switches to live by itself; it stops there and OK goes live, or ← seeks back.',
+        'Back while seeking cancels it: you return to where you were and it carries on right away; Back again leaves.'],
+      tr: ['Sarma: ← / → basılı tutunca hızlanır; ayrı ayrı basışlar hep 10 sn ilerler, uzun atlamadan sonra ince ayar yapabilirsin.',
+        'Geri sarma: sona sarınca artık kendiliğinden canlıya geçmez; orada durur, OK ile canlıya geçersin ya da ← ile geri sararsın.',
+        'Sarma sırasında Geri, sarmayı iptal eder: kaldığın yere döner ve hemen devam eder; tekrar Geri ile çıkarsın.'],
+      es: ['Avance: mantener ← / → acelera; cada pulsación suelta mueve siempre 10 s, para ajustar después de un salto largo.',
+        'Retroceso: llegar al final ya no cambia solo al directo; se detiene ahí y OK va al directo, o ← vuelve atrás.',
+        'Atrás durante el avance lo cancela: vuelves a donde estabas y sigue al instante; otro Atrás sale.'],
+      ar: ['التقديم: الضغط المستمر على ← / → يسرّع؛ والضغطات المنفصلة تتحرك دائمًا 10 ثوانٍ للضبط الدقيق بعد قفزة طويلة.',
+        'الترجيع: الوصول إلى النهاية لم يعد ينقلك إلى المباشر تلقائيًا؛ يتوقف هناك وOK ينقلك إلى المباشر أو ← للرجوع.',
+        'زر الرجوع أثناء التقديم يلغيه: تعود إلى حيث كنت ويستمر فورًا؛ والضغط مرة أخرى للخروج.'],
+      pt: ['Avanço: segurar ← / → acelera; toques separados sempre movem 10 s, para ajustar depois de um salto longo.',
+        'Voltar: chegar ao fim não muda mais sozinho para o ao vivo; para ali e OK vai ao vivo, ou ← volta.',
+        'Voltar durante o avanço cancela: você retorna a onde estava e continua na hora; Voltar de novo sai.'],
+      de: ['Spulen: Halten von ← / → beschleunigt; einzelne Tastendrücke springen immer 10 s, zum Feinjustieren nach einem großen Sprung.',
+        'Zurückspulen: Am Ende wird nicht mehr automatisch auf live geschaltet; es hält dort, OK geht live, ← spult zurück.',
+        'Zurück beim Spulen bricht es ab: du bist wieder, wo du warst, und es geht sofort weiter; nochmal Zurück beendet.'],
+      fr: ['Avance : maintenir ← / → accélère ; chaque appui séparé avance toujours de 10 s, pour affiner après un grand saut.',
+        'Retour en arrière : arriver à la fin ne passe plus tout seul en direct ; ça s’arrête là, OK passe en direct, ← recule.',
+        'Retour pendant l’avance l’annule : vous revenez où vous étiez et ça reprend aussitôt ; un autre Retour quitte.'],
+      ru: ['Перемотка: удержание ← / → ускоряет; отдельные нажатия всегда сдвигают на 10 с — удобно уточнить после большого прыжка.',
+        'Перемотка назад: в конце эфир больше не включается сам; запись останавливается, OK — в эфир, ← — назад.',
+        '«Назад» во время перемотки отменяет её: вы вернётесь туда, где были, и просмотр сразу продолжится; ещё раз «Назад» — выход.'],
+      pl: ['Przewijanie: przytrzymanie ← / → przyspiesza; pojedyncze naciśnięcia zawsze przesuwają o 10 s, by doprecyzować po dużym skoku.',
+        'Cofanie: dojście do końca nie przełącza już samo na żywo; zatrzymuje się tam, OK przechodzi na żywo, ← cofa.',
+        'Wstecz podczas przewijania je anuluje: wracasz tam, gdzie byłeś, i od razu leci dalej; ponowne Wstecz wychodzi.'],
+      it: ['Avanzamento: tenere premuto ← / → accelera; ogni pressione singola sposta sempre di 10 s, per rifinire dopo un salto lungo.',
+        'Riavvolgimento: arrivare alla fine non passa più da solo alla diretta; si ferma lì, OK va in diretta, ← torna indietro.',
+        'Indietro durante l’avanzamento lo annulla: torni dov’eri e riprende subito; un altro Indietro esce.']
+    }
+  },
+  {
     v: '1.0.8',
     items: {
       en: ['Uses less memory while browsing long lists, and thumbnails appear right after start-up.',
