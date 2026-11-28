@@ -51,10 +51,21 @@ var Player = (function () {
     if (video.seekable && video.seekable.length) return video.seekable.end(video.seekable.length - 1);
     return (opts && opts.duration) || 0;
   }
+  /* Where playback is: the seek target while seeking; while a past broadcast is still opening at
+     its resume point, that point (the video reads 0 until it gets there). */
+  var startTarget = null;
+  function position() {
+    if (pendingSeek !== null) return pendingSeek;
+    if (startTarget !== null) return startTarget;
+    return video.currentTime;
+  }
+  function reachedStart() {
+    if (startTarget !== null && video.currentTime > 0 && Math.abs(video.currentTime - startTarget) < 3) startTarget = null;
+  }
   function updateProgress(at) {
     if (!isVod()) return;
     // Sarma sürerken her zaman hedef noktayı göster (eski konuma geri sıçramasın).
-    var d = duration(), t = at !== undefined && at !== null ? at : (pendingSeek !== null ? pendingSeek : video.currentTime);
+    var d = duration(), t = at !== undefined && at !== null ? at : position();
     var pct = d ? Math.min(100, t / d * 100) : 0;
     el('progressFill').style.width = pct + '%';
     el('progressKnob').style.left = pct + '%';
@@ -89,14 +100,16 @@ var Player = (function () {
     var p = video.play();
     if (p && p['catch']) p['catch'](function () {});
   }
-  /* hls.js (~600 KB) is fetched and parsed only when it is first needed, so the app starts faster. */
+  /* hls.js is fetched and parsed only when it is first needed, so the app starts faster. The "light"
+     build (~380 KB instead of ~600 KB) leaves out subtitles, alternate audio and DRM, which Kick's
+     streams don't need (their audio is in the video segments). */
   var hlsLoading = null, loadSeq = 0;
   function ensureHls(cb) {
     if (window.Hls) { cb(); return; }
     if (!hlsLoading) {
       hlsLoading = [];
       var s = document.createElement('script');
-      s.src = 'lib/hls.min.js';
+      s.src = 'lib/hls.light.min.js';
       s.onload = s.onerror = function () { var q = hlsLoading; hlsLoading = null; for (var i = 0; i < q.length; i++) q[i](); };
       document.head.appendChild(s);
     }
@@ -162,12 +175,13 @@ var Player = (function () {
     destroyHls();
     clearTimeout(retryTimer);
     startPaused = !!paused;
+    startTarget = isVod() && startAt > 0 ? startAt : null;
     ensureHls(function () { if (my === loadSeq && opts) loadNow(url, startAt); });
   }
   function loadNow(url, startAt) {
     if (window.Hls && Hls.isSupported()) {
       var cfg = {
-        enableWorker: true, startPosition: startAt || -1,
+        enableWorker: true, startPosition: (startTarget !== null ? startTarget : startAt) || -1,
         capLevelToPlayerSize: false, enableWebVTT: false, enableIMSC1: false, enableCEA708Captions: false,
         // TV belleği az: VOD'da ~30 sn, canlıda ~15 sn ileriyi tut.
         maxBufferLength: isVod() ? 30 : 15, maxMaxBufferLength: isVod() ? 40 : 20, backBufferLength: isVod() ? 10 : 5,
@@ -183,9 +197,10 @@ var Player = (function () {
       if (startPaused) { cfg.maxBufferLength = 1; cfg.maxMaxBufferLength = 1; }  // just the frame
       hls = new Hls(cfg);
       loadingStopped = false; frameOnly = startPaused;
-      if (opts.rewind) {
-        // The recording's real length is known once its playlist arrives: if our estimate of the
-        // start point overshot the end, move back to the requested distance from the end.
+      if (opts.rewind && rewindLoading) {
+        // First open of the recording: its real length is known once its playlist arrives; if our
+        // estimate of the start point was off, move to the requested distance from the end.
+        // (Not when it is reopened at the current spot after reaching its end.)
         hls.once(Hls.Events.LEVEL_LOADED, function (e, d) {
           var total = d && d.details && d.details.totalduration;
           if (!total) return;
@@ -212,10 +227,12 @@ var Player = (function () {
       hls.on(Hls.Events.FRAG_BUFFERED, function (e, d) {
         // Duraklatılmış sarmada hedef noktayı içeren parça geldiyse indirmeyi hemen kes.
         var f = d && d.frag;
-        if (startPaused && video.paused) {
-          // Opened on a still frame (rewind): it's here, stop downloading and show the pause icon.
-          startPaused = false; frameOnly = false; stopLoading();
-          hideStatus(); el('pauseIcon').classList.remove('hidden');
+        if (startPaused) {
+          // Opened on a still frame (rewind): it's here. Still paused: stop downloading and show the
+          // pause icon. OK may have been pressed while it opened: then it just keeps playing.
+          startPaused = false; frameOnly = false;
+          if (video.paused) { stopLoading(); el('pauseIcon').classList.remove('hidden'); }
+          hideStatus();
           if (opts.rewind && rewindLoading) {
             rewindLoading = false;
             var want = Math.max(0, duration() - rewindTarget);
@@ -237,6 +254,7 @@ var Player = (function () {
           retries++;
           hls.recoverMediaError();
         } else {
+          rewindLoading = false; startPaused = false;
           status('playError', d.details || '', true);
           showOsd(true);
         }
@@ -282,6 +300,8 @@ var Player = (function () {
       waitTimer = setTimeout(function () { if (opts && !video.paused && video.readyState < 3) status('buffering', ''); }, 600);
     });
     video.addEventListener('canplay', function () { clearTimeout(waitTimer); });
+    video.addEventListener('seeked', reachedStart);
+    video.addEventListener('playing', reachedStart);
     video.addEventListener('playing', function () { clearTimeout(waitTimer); retries = 0; hideStatus(); el('pauseIcon').classList.add('hidden'); showOsd(); });
     video.addEventListener('play', function () { frameOnly = false; el('pauseIcon').classList.add('hidden'); resumeLoading(); });
     video.addEventListener('pause', function () {
@@ -307,7 +327,7 @@ var Player = (function () {
     video.addEventListener('ended', function () {
       if (!opts) return;
       if (opts.rewind) { rewindReachedEnd(); return; }
-      if (isVod()) { Store.setResume(opts.vodId, 0, 0); exit(); }
+      if (isVod()) { Store.setWatched(opts.vodId); Store.setResume(opts.vodId, 0, 0); exit(); }
       else { status('streamEnded', '', true); }
     });
     video.addEventListener('error', function () {
@@ -324,6 +344,7 @@ var Player = (function () {
   }
   /* Presses while the recording is still opening: move the target, show how far back. */
   function adjustRewind(dir) {
+    if (dir > 0 && rewindTarget <= 10) { goLive(); return; }  // → at the nearest point: back to live
     rewindTarget = Math.max(10, rewindTarget - dir * seekStep());
     el('osdTime').textContent = I18n.t('behindLive', { t: fmt(rewindTarget + RECORD_LAG_S) });
     showOsd(true);
@@ -332,9 +353,11 @@ var Player = (function () {
     if (!isVod()) return;
     if (opts.rewind && rewindLoading) { adjustRewind(dir); return; }
     var step = seekStep();
-    var base = pendingSeek !== null ? pendingSeek : video.currentTime, d = duration();
+    var base = position(), d = duration();
     if (opts.rewind && dir > 0 && d && base + step >= d - 3) { goLive(); return; }
     pendingSeek = Math.max(0, Math.min(d ? d - 3 : base + step, base + dir * step));
+    // Seeking while it is still opening: it opens paused on the target's frame, like any other seek.
+    if (video.readyState < 1 && !startPaused) { startPaused = true; setFrameBuffer(true); }
     // Sarmaya başlayınca yayını duraklat: sarma sırasında video çözülmesin, boşuna indirilmesin.
     if (!video.paused) video.pause();
     // Seeking again while the previous spot's frame is still downloading: cancel that download,
@@ -369,7 +392,7 @@ var Player = (function () {
         status('buffering', '');
       }
     }
-    video.currentTime = target;
+    placeAt(target);
     updateProgress();
   }
   /* Apply a seek that is still waiting for the settle delay, right now and with normal buffering.
@@ -382,10 +405,21 @@ var Player = (function () {
     pendingSeek = null;
     frameOnly = false;
     setFrameBuffer(false);
-    if (hls && loadingStopped) { loadingStopped = false; hls.startLoad(target); }
-    video.currentTime = target;
+    if (hls && (loadingStopped || video.readyState < 1)) { loadingStopped = false; hls.startLoad(target); }
+    placeAt(target);
     updateProgress();
     return true;
+  }
+  /* Move playback to a seek target. While the video is still opening (no picture yet) it can't
+     jump: the target becomes the start point instead (also for a player not created yet). */
+  function placeAt(target) {
+    if (video.readyState < 1) {
+      startTarget = target;
+      if (hls) hls.config.startPosition = target;
+      return;
+    }
+    video.currentTime = target;
+    startTarget = null;
   }
 
   /* ---------- Kalite menüsü ---------- */
@@ -435,8 +469,25 @@ var Player = (function () {
   }
 
   /* ---------- Rewind ---------- */
+  /* Live viewer count next to the LIVE badge: one small request a minute while watching live. */
+  var viewersTimer = null;
+  function showViewers(n) { el('osdViewers').textContent = n ? '● ' + I18n.t('viewers', { n: I18n.number(n) }) : ''; }
+  function startViewers() {
+    clearInterval(viewersTimer);
+    showViewers(opts && opts.kind === 'live' ? opts.viewers : 0);
+    if (!opts || opts.kind !== 'live' || !opts.getViewers) return;
+    var session = opts;
+    viewersTimer = setInterval(function () {
+      if (opts !== session) { clearInterval(viewersTimer); return; }
+      if (inBackground || opts.kind !== 'live') return;  // nothing while away or rewinding
+      session.getViewers(function (n) {
+        if (opts === session && opts.kind === 'live' && n) { opts.viewers = n; showViewers(n); }
+      });
+    }, 60000);
+  }
   function applyMode() {
     var badge = el('osdLive');
+    el('osdViewers').classList.toggle('hidden', isVod());
     badge.textContent = I18n.t(opts.rewind ? 'rewindBadge' : 'live');
     badge.className = 'badge ' + (opts.rewind ? 'behind' : 'live') + (isVod() && !opts.rewind ? ' hidden' : '');
     el('progress').classList.toggle('hidden', !isVod());
@@ -452,9 +503,11 @@ var Player = (function () {
     rewindTarget = back;
     seekStep();  // start the press streak so held presses accelerate
     status('loadingStream', '');
+    var session = opts;
     opts.getRecording(function (src, startedAt) {
+      if (opts !== session) return;  // the player was closed or another stream opened meanwhile
       rewindBusy = false;
-      if (!opts || opts.kind !== 'live') return;
+      if (opts.kind !== 'live') return;
       if (!src) { rewindLoading = false; hideStatus(); toast(I18n.t('rewindUnavailable')); return; }
       // Estimate the recording's length from the stream start; corrected when its playlist loads.
       var started = startedAt ? Date.parse(String(startedAt).replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(startedAt) ? '' : 'Z')) : NaN;
@@ -481,9 +534,9 @@ var Player = (function () {
     applyMode();
     toast(I18n.t('backToLive'));
     status('loadingStream', '');
-    var get = opts.getLiveUrl || function (cb) { cb(opts.liveUrl); };
+    var get = opts.getLiveUrl || function (cb) { cb(opts.liveUrl); }, session = opts;
     get(function (url) {
-      if (!opts || opts.kind !== 'live') return;
+      if (opts !== session || opts.kind !== 'live') return;
       if (!url) { status('streamEnded', '', true); return; }
       opts.url = url;
       load(url, 0);
@@ -510,6 +563,7 @@ var Player = (function () {
     el('osdTitle').textContent = o.title || '';
     rewind = null;
     applyMode();  // badge, progress bar and hint for live / past broadcast
+    startViewers();
     el('osdTime').textContent = '';
     el('osdQuality').textContent = '';
     chatOn = !isVod() && Store.get('kickizle.chat', true);
@@ -532,14 +586,15 @@ var Player = (function () {
   function stop() {
     loadSeq++;
     if (!opts) return;
-    var at = pendingSeek !== null ? pendingSeek : video.currentTime;  // leaving mid-seek keeps the target
+    var at = position();  // leaving mid-seek keeps the target; still opening keeps the resume point
     if (isVod() && at > 0) Store.setResume(opts.vodId, at, duration());
     pendingSeek = null;
     clearInterval(saveTimer); clearTimeout(seekTimer); clearTimeout(osdTimer); clearTimeout(retryTimer); clearTimeout(waitTimer);
+    clearInterval(viewersTimer);
     Chat.disconnect();
     destroyHls();
     try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
-    rewind = null; rewindBusy = false; rewindLoading = false; startPaused = false;
+    rewind = null; rewindBusy = false; rewindLoading = false; startPaused = false; startTarget = null;
     opts = null;
   }
   function exit() { stop(); if (onExit) onExit(); }
@@ -554,7 +609,7 @@ var Player = (function () {
     bgWasPlaying = !video.paused;
     commitSeek();
     if (!video.paused) video.pause();            // VOD: the pause handler also stops downloading
-    if (isVod()) Store.setResume(opts.vodId, video.currentTime, duration());
+    if (isVod()) { stopLoading(); Store.setResume(opts.vodId, position(), duration()); }  // (also when it was already paused)
     else if (hls) { hls.stopLoad(); loadingStopped = true; }
     clearInterval(saveTimer); clearTimeout(osdTimer); clearTimeout(retryTimer); clearTimeout(waitTimer);
     Chat.disconnect();

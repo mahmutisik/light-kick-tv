@@ -53,14 +53,26 @@
     while (node && node !== document && !(node.classList && node.classList.contains('scroller'))) node = node.parentNode;
     return node && node !== document ? node : null;
   }
+  /* Far-off images are let go again: a decoded 640x360 thumbnail takes about 0.9 MB, so a list
+     scrolled down to 96 cards would otherwise keep ~90 MB of pictures. Only images more than ~2
+     screens away are released, and only after the list has moved ~1 screen since the last pass. */
+  var FAR_PX = 2000, RECHECK_PX = 900;
   function checkLazy(sc) {
     if (!sc || splashOpen) return;  // image decoding waits until the splash is gone (TV CPU is busy then)
     var sr = sc.getBoundingClientRect();
     if (!sr.height) return;  // screen not visible yet; checked again when it is shown
-    var nodes = sc.querySelectorAll('[data-bg]');
-    for (var i = 0; i < nodes.length; i++) {
-      var r = nodes[i].getBoundingClientRect();
+    var nodes = sc.querySelectorAll('[data-bg]'), i, r;
+    for (i = 0; i < nodes.length; i++) {
+      r = nodes[i].getBoundingClientRect();
       if (r.height && r.bottom >= sr.top - 300 && r.top <= sr.bottom + 950) loadBg(nodes[i]);
+    }
+    var at = sc.scrollTop, last = sc.getAttribute('data-unload-at');
+    if (last !== null && Math.abs(at - Number(last)) < RECHECK_PX) return;
+    sc.setAttribute('data-unload-at', String(at));
+    var shown = sc.querySelectorAll('[style*="background-image"]');
+    for (i = 0; i < shown.length; i++) {
+      r = shown[i].getBoundingClientRect();
+      if (r.height && (r.bottom < sr.top - FAR_PX || r.top > sr.bottom + FAR_PX)) unloadBg(shown[i]);
     }
   }
   function observeImages(container) {
@@ -90,13 +102,16 @@
   function back() {
     if (!stack.length) { tryExit(); return; }
     if (current === 'player') clearTimeout(releaseTimer);
-    if (current === 'channel') stopWatch();
+    if (current === 'channel') { stopWatch(); chan.seq++; }  // late answers for the closed page are ignored
+    // The screen being closed lets go of its images (they reload lazily if it is opened again).
+    if (current !== 'player') { var scs = el(current).querySelectorAll('.scroller'); for (var i = 0; i < scs.length; i++) unloadImages(scs[i]); }
     var prev = stack.pop(), preferred = prev.focus;
     if (prev.id === 'home') {
       if (homeStale) {
         // Watched for a while: the old list was released; load a fresh one and start at the top.
         homeStale = false;
         renderRecent();
+        renderContinue();
         renderFollowed(true);
         showScreen('home', el('btnFilter'));
         loadLive(true);
@@ -105,11 +120,14 @@
       // Son izlenenler / takip listesi değişmiş olabilir: yeniden çiz, odağı aynı yerde tut.
       var path = focusPath(prev.focus);
       renderRecent();
+      renderContinue();
       renderFollowed(false);
       if (!preferred || !document.body.contains(preferred)) preferred = fromPath(path);
     }
     showScreen(prev.id, preferred);
     if (prev.id === 'channel') { refreshVodProgress(); updateFollowBtn(); }
+    else if (prev.id === 'settings') renderSettings();
+    else if (prev.id === 'home') { setTimeout(maybeShowNews, 300); checkRecentLive(); }
   }
 
   /* Memory while watching: after RELEASE_MS in the player, the screens behind it give up their
@@ -134,14 +152,16 @@
   }
   function unloadImages(container) {
     var nodes = container.querySelectorAll('[style*="background-image"]');
-    for (var i = 0; i < nodes.length; i++) {
-      var re = /url\(["']?([^"')]+)["']?\)/g, m1 = re.exec(nodes[i].style.backgroundImage), m2 = m1 && re.exec(nodes[i].style.backgroundImage);
-      if (m1) {
-        nodes[i].setAttribute('data-bg', m1[1]);
-        if (m2) nodes[i].setAttribute('data-bg2', m2[1]);
-        nodes[i].style.backgroundImage = '';
-      }
-    }
+    for (var i = 0; i < nodes.length; i++) unloadBg(nodes[i]);
+    container.removeAttribute('data-unload-at');
+  }
+  /* Give an image back: its URL returns to data-bg, so it loads again when it comes near. */
+  function unloadBg(node) {
+    var re = /url\(["']?([^"')]+)["']?\)/g, m1 = re.exec(node.style.backgroundImage), m2 = m1 && re.exec(node.style.backgroundImage);
+    if (!m1) return;
+    node.setAttribute('data-bg', m1[1]);
+    if (m2) node.setAttribute('data-bg2', m2[1]);
+    node.style.backgroundImage = '';
   }
   function focusPath(node) {
     if (!node || !node.parentNode || !node.parentNode.id) return null;
@@ -171,12 +191,28 @@
     Player.toast(I18n.t('exitHint'));
   }
 
+  /* Kick's times: "2026-11-28 16:34:52" (UTC) or ISO with a zone. -> ms, or NaN */
+  function parseTime(s) {
+    if (!s) return NaN;
+    s = String(s);
+    return new Date(s.replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(s) ? '' : 'Z')).getTime();
+  }
+  /* How long a live stream has been on: "2 h 15 m" style, in the interface language. */
+  function liveFor(started) {
+    var mins = Math.floor((Date.now() - parseTime(started)) / 60000);
+    if (!(mins >= 1)) return '';
+    var h = Math.floor(mins / 60);
+    return h ? I18n.t('durHM', { h: h, m: mins % 60 }) : I18n.t('durM', { m: mins });
+  }
+
   /* ---------- Kartlar ---------- */
   function liveCard(x) {
     var c = make('div', 'card focusable'), th = make('div', 'thumb');
     bg(th, x.thumb);
     th.appendChild(make('span', 'badge live', I18n.t('live')));
     th.appendChild(make('span', 'corner', '● ' + I18n.t('viewers', { n: I18n.number(x.viewers) })));
+    var on = liveFor(x.started);
+    if (on) th.appendChild(make('span', 'corner left', on));
     c.appendChild(th);
     var body = make('div', 'card-body');
     body.appendChild(make('div', 'card-title', x.title));
@@ -215,24 +251,26 @@
     var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
     return (h ? h + ':' + (m < 10 ? '0' : '') + m : m) + ':' + (x < 10 ? '0' : '') + x;
   }
-  function vodCard(v) {
+  function vodCard(v, onHome) {
     var c = make('div', 'card focusable'), th = make('div', 'thumb');
     bg(th, v.thumb, v.thumbFallback);
     if (v.ongoing) th.appendChild(make('span', 'badge ongoing', I18n.t('ongoing')));
     else if (v.duration) th.appendChild(make('span', 'corner', fmtDur(v.duration)));
-    var r = Store.getResume(v.id);
-    if (r && r.t && (r.d || v.duration)) {
-      var bar = make('div', 'resume');
-      bar.style.width = Math.min(100, r.t / (r.d || v.duration) * 100) + '%';
-      th.appendChild(bar);
-    }
+    // Came out since your last visit to this channel (and not started yet): NEW.
+    if (!onHome && !v.ongoing && chan.since && parseTime(v.created) > chan.since && !Store.getResume(v.id) && !Store.isWatched(v.id))
+      th.appendChild(make('span', 'badge new', I18n.t('newBadge')));
+    showProgress(th, v);
     c.appendChild(th);
     var body = make('div', 'card-body');
     body.appendChild(make('div', 'card-title', v.title));
-    var parts = [vodDate(v.created)];
-    if (v.views) parts.push(I18n.t('views', { n: I18n.number(v.views) }));
-    if (v.category) parts.push(v.category);
-    body.appendChild(make('div', 'card-sub', parts.join(' · ')));
+    var sub = make('div', 'card-sub'), parts = [vodDate(v.created)];
+    if (onHome) { sub.appendChild(make('b', '', v.channel)); parts.unshift(''); }
+    else {
+      if (v.views) parts.push(I18n.t('views', { n: I18n.number(v.views) }));
+      if (v.category) parts.push(v.category);
+    }
+    sub.appendChild(document.createTextNode(parts.join(' · ')));
+    body.appendChild(sub);
     c.appendChild(body);
     c.onclick = function () { playVod(v); };
     return c;
@@ -271,6 +309,20 @@
     };
     return card;
   }
+  /* Where you are in a past broadcast (green bar); watched to the end: a full bar and a label. */
+  function showProgress(th, v) {
+    var bar = th.querySelector('.resume'), tag = th.querySelector('.badge.watched');
+    var r = Store.getResume(v.id), d = r && (r.d || v.duration), watched = !v.ongoing && Store.isWatched(v.id);
+    var pct = r && r.t && d ? Math.min(100, r.t / d * 100) : watched ? 100 : 0;
+    if (pct) {
+      if (!bar) { bar = make('div', 'resume'); th.appendChild(bar); }
+      bar.style.width = pct + '%';
+    } else if (bar) th.removeChild(bar);
+    if (watched && !tag) th.appendChild(make('span', 'badge watched', I18n.t('watched')));
+    else if (!watched && tag) th.removeChild(tag);
+    var fresh = th.querySelector('.badge.new');
+    if (fresh && (pct || watched)) th.removeChild(fresh);
+  }
   function retryButton(fn) {
     var b = make('button', 'btn focusable', I18n.t('loadFailed'));
     b.onclick = fn;
@@ -283,13 +335,50 @@
     box.innerHTML = '';
     wrap.classList.toggle('hidden', !list.length);
     list.forEach(function (x) {
-      var chip = make('div', 'chip focusable');
+      var chip = make('div', 'chip focusable' + (recentLive.on[x.slug] ? ' is-live' : ''));
+      chip.setAttribute('data-slug', x.slug);
       chip.appendChild(avatar(x.pic, x.name));
       chip.appendChild(make('span', '', x.name));
       chip.onclick = function () { openChannel(x.slug, false); };
       box.appendChild(chip);
     });
     observeImages(box);
+  }
+  /* Recently watched channels that are live now get a red dot. At most one small request per
+     channel, at most once a minute, and only on the home screen after start-up. */
+  var recentLive = { on: {}, at: 0, seq: 0 };
+  function checkRecentLive() {
+    var list = Store.recent();
+    if (splashOpen || current !== 'home' || !list.length || Date.now() - recentLive.at < 60000) return;
+    var my = ++recentLive.seq, res = {}, idx = 0, active = 0, finished = 0;
+    recentLive.at = Date.now();
+    function next() {
+      while (active < 4 && idx < list.length) {
+        active++;
+        (function (slug) {
+          Api.livestream(slug, function (err, ls) {
+            active--; finished++;
+            if (my !== recentLive.seq) return;
+            res[slug] = !err && !!ls;
+            if (finished < list.length) { next(); return; }
+            recentLive.on = res;
+            var chips = el('recentList').children;
+            for (var i = 0; i < chips.length; i++) chips[i].classList.toggle('is-live', !!res[chips[i].getAttribute('data-slug')]);
+          });
+        }(list[idx++].slug));
+      }
+    }
+    next();
+  }
+  /* "Continue watching": the last 4 half-watched past broadcasts, one row. */
+  function renderContinue() {
+    var list = Store.continueList(4), grid = el('continueGrid');
+    el('continueWrap').classList.toggle('hidden', !list.length);
+    redrawKeepFocus(grid, function () {
+      grid.innerHTML = '';
+      list.forEach(function (v) { grid.appendChild(vodCard(v, true)); });
+    });
+    observeImages(grid);
   }
   function langName(c) { for (var i = 0; i < LANGS.length; i++) if (LANGS[i].c === c) return LANGS[i].n; return c; }
   function langsSummary(f) {
@@ -352,6 +441,7 @@
       loadLive(true);
     }
     Nav.setScope(el('home'), el('btnFilter'));
+    maybeShowNews();
   }
 
   /* Takip edilen kanallardan canlı olanlar (en fazla 4 istek aynı anda, 1 dk önbellek). */
@@ -377,7 +467,7 @@
           Api.livestream(f.slug, function (err, ls) {
             active--; finished++;
             if (my !== followSeq) return;
-            if (!err && ls) results.push({ slug: f.slug, name: f.name, pic: f.pic, title: ls.title, viewers: ls.viewers, category: ls.category, thumb: ls.thumb });
+            if (!err && ls) results.push({ slug: f.slug, name: f.name, pic: f.pic, title: ls.title, viewers: ls.viewers, category: ls.category, thumb: ls.thumb, started: ls.started });
             after();
           });
         }(list[idx++]));
@@ -425,6 +515,7 @@
           followCache.at = 0;
           Player.toast(I18n.t('unfollowedToast', { name: x.name }));
           renderSettings();
+          if (!el('followRow' + n)) { var up = el('followRow' + (n - 1)); Nav.focus(up ? up.querySelector('.btn') : el('aboutRow')); }
         };
         row.appendChild(chip);
         row.appendChild(rm);
@@ -465,9 +556,10 @@
       if (my !== home.seq) return;
       home.loading = false;
       if (err && splashOpen) { showSplashError(); return; }
+      if (!err && splashOpen) warmImages(res.items.slice(0, 12));
       if (!err) homeReady();
       note.textContent = '';
-      if (err) { note.appendChild(retryButton(function () { loadLive(false); })); return; }
+      if (err) { note.appendChild(retryButton(function () { loadLive(false); })); focusInto('home', note.firstChild); return; }
       var seen = {};
       home.items.forEach(function (x) { seen[x.slug] = true; });
       var fresh = res.items.filter(function (x) { return !seen[x.slug]; });
@@ -477,8 +569,15 @@
       fresh.forEach(function (x) { grid.appendChild(homeCard(x)); });
       observeImages(grid);
       if (!home.items.length) note.textContent = I18n.t('nothingLive');
-      if (current === 'home' && !Nav.getFocused()) Nav.setScope(el('home'));
+      focusInto('home', grid.children[home.items.length - fresh.length]);
     });
+  }
+
+  /* The first screen's thumbnails are downloaded during the splash (the network is idle then), but
+     not shown or decoded: they come from the cache, ready, when the splash fades. */
+  var warm = [];
+  function warmImages(items) {
+    items.forEach(function (x) { if (x.thumb) { var im = new Image(); im.src = x.thumb; warm.push(im); } });
   }
 
   /* ---------- Start-up splash ---------- */
@@ -510,8 +609,10 @@
     clearTimeout(splashWatch);
     s.classList.add('out');
     if (followPending) { followPending = false; renderFollowed(true); }  // network only: fine during the fade
+    setTimeout(checkRecentLive, 1500);
     setTimeout(function () {
       splashOpen = false;
+      warm = [];  // the cards use the cached files now
       if (s.parentNode) s.parentNode.removeChild(s);
       var scs = current ? el(current).querySelectorAll('.scroller') : [];
       for (var i = 0; i < scs.length; i++) checkLazy(scs[i]);  // now load the thumbnails
@@ -519,11 +620,11 @@
       setTimeout(function () { checkUpdate(false); }, 4000);  // well after start-up
     }, 480);
   }
-  // Called when the first live list request finishes: keep the splash up at least ~1.3 s overall,
+  // Called when the first live list request finishes: keep the splash up at least ~1 s overall,
   // so on a fast connection the logo still finishes its fade-in and shows for a moment.
   function homeReady() {
     var shown = window.performance && performance.now ? performance.now() : 0;
-    setTimeout(hideSplash, Math.max(0, 1300 - shown));
+    setTimeout(hideSplash, Math.max(0, 1000 - shown));
   }
 
   /* ---------- Games & categories ---------- */
@@ -556,9 +657,9 @@
     });
   }
   /* A screen that had nothing to focus yet (still loading): focus its first card once there is one. */
-  function focusInto(id) {
+  function focusInto(id, preferred) {
     var f = Nav.getFocused();
-    if (current === id && (!f || !el(id).contains(f))) Nav.setScope(el(id));
+    if (current === id && (!f || !el(id).contains(f) || !f.offsetWidth)) Nav.setScope(el(id), preferred);
   }
   /* One game / category: its live streams, most watched first, in the home filter's languages. */
   function openCategory(c) {
@@ -638,9 +739,9 @@
       if (my !== searchSeq) return;
       clear();
       note.textContent = '';
-      if (err) { note.appendChild(retryButton(runSearch)); return; }
+      if (err) { note.appendChild(retryButton(runSearch)); focusInto('search', note.firstChild); return; }
       var list = res.channels, games = res.categories;
-      if (!list.length && !games.length) { note.textContent = I18n.t('noResults'); return; }
+      if (!list.length && !games.length) { note.textContent = I18n.t('noResults'); focusInto('search', el('searchInput')); return; }
       // Games first (most watched first, one row), then channels.
       games.sort(function (a, b) { return b.viewers - a.viewers; });
       games.slice(0, 6).forEach(function (x) { catBox.appendChild(categoryCard(x)); });
@@ -650,6 +751,7 @@
       list.forEach(function (x) { grid.appendChild(channelCard(x)); });
       observeImages(el('searchScroll'));
       if (current === 'search' && document.activeElement !== el('searchInput')) Nav.focus(catBox.children[0] || grid.children[0]);
+      else focusInto('search', el('searchInput'));
     });
   }
   function openSearch() {
@@ -666,10 +768,15 @@
   /* ---------- Kanal ---------- */
   function openChannel(slug, focusLive) {
     if (current === 'search') Store.addSearch(searchQuery());  // aramadan bir kanala girildiyse aramayı kaydet
-    go('channel');
-    Player.preload();  // a stream is likely next: fetch the player library in the background
     var my = ++chan.seq;
-    chan.slug = slug; chan.data = null; chan.vods = [];
+    chan.slug = slug; chan.data = null; chan.vods = []; chan.clips = null;
+    // Last visit (for NEW labels), then remember this one; the 60 most recent channels.
+    var visits = Store.get('kickizle.visits', {}) || {};
+    chan.since = visits[slug] || 0;
+    visits[slug] = Date.now();
+    var vs = Object.keys(visits).sort(function (a, b) { return visits[b] - visits[a]; });
+    for (var vi = 60; vi < vs.length; vi++) delete visits[vs[vi]];
+    Store.set('kickizle.visits', visits);
     el('channelScroll').scrollTop = 0;
     el('chAvatar').style.backgroundImage = '';
     el('chAvatar').removeAttribute('src');
@@ -685,8 +792,17 @@
     el('clipNote').textContent = I18n.t('loading');
     showTab('vods');
     stopWatch();
-    var pending = 2;
-    function done() { if (--pending === 0 && my === chan.seq && current === 'channel') Nav.setScope(el('channel'), chan.data && chan.data.live && focusLive !== false ? el('btnWatchLive') : el('btnFollow')); }
+    go('channel');
+    var pending = 2, openFocus = Nav.getFocused();
+    function done() {
+      if (--pending !== 0 || my !== chan.seq) return;
+      var f = Nav.getFocused();
+      if (current === 'channel' && (f === openFocus || !f || !f.offsetWidth))
+        Nav.setScope(el('channel'), chan.data && chan.data.live && focusLive !== false ? el('btnWatchLive') : el('btnFollow'));
+      // A stream is likely next: parse the player library (~380 KB) now that the page is drawn,
+      // instead of while the channel's info and broadcasts are being put on screen.
+      setTimeout(Player.preload, 150);
+    }
 
     Api.channel(slug, function (err, ch) {
       if (my !== chan.seq) return;
@@ -698,16 +814,6 @@
       Store.addRecent({ slug: ch.slug, name: ch.name, pic: ch.pic });
       if (!ch.live) startWatch(slug, my);
       done();
-    });
-    // Clips come last and don't hold up the first focus.
-    Api.clips(slug, function (err, list) {
-      if (my !== chan.seq) return;
-      var grid = el('clipGrid'), note = el('clipNote');
-      note.textContent = '';
-      if (err) { note.appendChild(retryButton(function () { back(); openChannel(slug, focusLive); })); return; }
-      list.forEach(function (v) { grid.appendChild(clipCard(v)); });
-      observeImages(grid);
-      if (!list.length) note.textContent = I18n.t('noClips');
     });
     Api.videos(slug, function (err, vods) {
       if (my !== chan.seq) return;
@@ -727,7 +833,24 @@
     el('tabClips').classList.toggle('active', clips);
     el('vodSection').classList.toggle('hidden', clips);
     el('clipSection').classList.toggle('hidden', !clips);
+    if (clips && !chan.clips) loadClips();
     checkLazy(el('channelScroll'));  // the list just shown may have images still to load
+  }
+  /* Clips are fetched the first time their tab is opened, not with every channel page. */
+  function loadClips() {
+    var my = chan.seq, slug = chan.slug, grid = el('clipGrid'), note = el('clipNote');
+    chan.clips = 'loading';
+    note.innerHTML = ''; note.textContent = I18n.t('loading');
+    Api.clips(slug, function (err, list) {
+      if (my !== chan.seq) return;
+      note.textContent = '';
+      if (err) { chan.clips = null; note.appendChild(retryButton(loadClips)); focusInto('channel', note.firstChild); return; }
+      chan.clips = list;
+      list.forEach(function (v) { grid.appendChild(clipCard(v)); });
+      observeImages(grid);
+      if (!list.length) note.textContent = I18n.t('noClips');
+      focusInto('channel', grid.children[0] || el('tabClips'));
+    });
   }
   function showChannelInfo(ch) {
     if (ch.pic) el('chAvatar').src = ch.pic;
@@ -782,12 +905,13 @@
     followCache.at = 0;
     updateFollowBtn();
   }
+  /* Back from the player: update the resume bars in place (the cards and their images stay). */
   function refreshVodProgress() {
-    var grid = el('vodGrid'), f = Nav.getFocused(), idx = Array.prototype.indexOf.call(grid.children, f);
-    grid.innerHTML = '';
-    chan.vods.forEach(function (v) { grid.appendChild(vodCard(v)); });
-    observeImages(grid);
-    if (idx >= 0 && grid.children[idx]) Nav.setScope(el('channel'), grid.children[idx]);
+    var cards = el('vodGrid').children;
+    chan.vods.forEach(function (v, i) {
+      var th = cards[i] && cards[i].firstChild;
+      if (th) showProgress(th, v);
+    });
   }
 
   /* ---------- Oynatma ---------- */
@@ -810,7 +934,8 @@
     var slug = ch.slug;
     Player.open({
       kind: 'live', url: ch.playbackUrl, channelName: ch.name, title: ch.title,
-      channelId: ch.id, chatroomId: ch.chatroomId,
+      channelId: ch.id, chatroomId: ch.chatroomId, viewers: ch.viewers,
+      getViewers: function (cb) { Api.livestream(slug, function (err, ls) { cb(!err && ls ? ls.viewers : 0); }); },
       // Rewind: the running stream's recording (the "ongoing" past broadcast), fetched fresh if the
       // cached list doesn't have it yet.
       getRecording: function (cb) {
@@ -826,11 +951,14 @@
     }, back);
   }
   function playVod(v) {
+    var name = v.channel || (chan.data ? chan.data.name : chan.slug);
+    Store.saveContinue({ id: v.id, source: v.source, title: v.title, thumb: v.thumb, thumbFallback: v.thumbFallback,
+      duration: v.duration, created: v.created, channel: name, slug: v.slug || chan.slug });
     go('player');
     enteredPlayer();
     Player.open({
       kind: 'vod', url: v.source, vodId: v.id, duration: v.duration,
-      channelName: chan.data ? chan.data.name : chan.slug, title: v.title
+      channelName: name, title: v.title
     }, back);
   }
 
@@ -929,17 +1057,20 @@
   }
   function maybeShowNews() {
     if (newsChecked || !appVersion || splashOpen) return;
+    if (current !== 'home' || filterOpen || newsOpen) return;  // tried again when back on home
     newsChecked = true;
     var seen = Store.get('kickizle.seenVersion', null);
     Store.set('kickizle.seenVersion', appVersion);
     if (seen === null) {
       // No record yet: a first install (nothing stored) shows nothing; an update from a version
       // before this feature (1.0.6 or older) shows the recent lists.
-      var used = Store.recent().length || Store.follows().length || Store.get('kickizle.filter', null) || Store.get('kickizle.ui', null);
+      var ui = null;
+      try { ui = localStorage.getItem('kickizle.ui'); } catch (e) {}
+      var used = Store.recent().length || Store.follows().length || Store.get('kickizle.filter', null) || ui;
       if (!used) return;
       seen = '1.0.5';
     }
-    if (!isNewer(appVersion, seen) || current !== 'home' || filterOpen) return;
+    if (!isNewer(appVersion, seen)) return;
     openNews(newsSince(seen));
   }
 
@@ -998,6 +1129,7 @@
     I18n.apply();
     renderHomeHeader();
     renderRecent();
+    renderContinue();
     try { localStorage.removeItem('kickizle.homeCache'); localStorage.removeItem('kickizle.followLive'); } catch (e) {}  // from a dev build
     if (splashOpen && Store.follows().length) {
       // Reserve the row now so nothing jumps later; its requests start when the splash fades.

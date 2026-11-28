@@ -84,7 +84,7 @@ var Api = (function () {
             slug: ch.slug, name: ch.username || ch.slug, pic: ch.profile_pic || '',
             title: x.title || '', viewers: x.viewer_count || 0,
             category: x.category ? x.category.name : '',
-            thumb: pickImage(x.thumbnail, 480)
+            thumb: pickImage(x.thumbnail, 480), started: x.start_time || ''
           };
         }).filter(function (x) { return !!x.slug; })
       });
@@ -118,7 +118,8 @@ var Api = (function () {
       if (!x) { cb(null, null); return; }
       cb(null, {
         title: x.session_title || '', viewers: x.viewers || x.viewer_count || 0,
-        category: x.category ? x.category.name : '', thumb: pickImage(x.thumbnail, 480)
+        category: x.category ? x.category.name : '', thumb: pickImage(x.thumbnail, 480),
+        started: x.created_at || x.start_time || ''
       });
     });
   }

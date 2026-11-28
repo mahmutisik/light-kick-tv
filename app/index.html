@@ -34,6 +34,10 @@
           <div class="grid" id="followGrid"></div>
           <div class="note" id="followNote"></div>
         </div>
+        <div id="continueWrap" class="section hidden">
+          <h2 data-i18n="continueWatching"></h2>
+          <div class="grid" id="continueGrid"></div>
+        </div>
         <div id="recentWrap" class="section hidden">
           <h2 data-i18n="recentChannels"></h2>
           <div class="chips" id="recentList"></div>
@@ -191,6 +195,7 @@
           </div>
           <div class="osd-row">
             <span class="badge live hidden" id="osdLive">LIVE</span>
+            <span class="osd-viewers" id="osdViewers"></span>
             <span id="osdTime"></span>
             <span class="osd-quality" id="osdQuality"></span>
             <span class="osd-hint" id="osdHint"></span>
@@ -215,7 +220,7 @@
     <div id="toast" class="toast hidden"></div>
 
     <!-- Start-up splash: visible as soon as the page is parsed, removed by app.js once the
-         home screen is ready (at least ~1.3 s; if the list fails or takes over 10 s it shows an error and OK retries). -->
+         home screen is ready (at least ~1 s; if the list fails or takes over 10 s it shows an error and OK retries). -->
     <div id="splash">
       <div class="splash-logo">
         <svg viewBox="0 0 20.53 24" aria-hidden="true"><path fill="#53FC18" d="M0 .028h7.7v5.32h2.561v-2.66h2.562V.028h7.7v7.996H17.96v2.66h-2.562v2.66h2.562v2.66h2.562V24h-7.699v-2.66h-2.562v-2.66H7.7V24H0V.028Z"/></svg>
@@ -226,7 +231,7 @@
     </div>
   </div>
 
-  <!-- lib/hls.min.js (~600 KB) is loaded on demand by player.js, not at startup. -->
+  <!-- lib/hls.light.min.js (~380 KB) is loaded on demand by player.js, not at startup. -->
   <script src="js/i18n.js"></script>
   <script src="js/store.js"></script>
   <script src="js/api.js"></script>

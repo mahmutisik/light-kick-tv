@@ -78,6 +78,10 @@ button { font: inherit; color: inherit; background: none; border: 0; outline: no
 .thumb { width: 100%; height: 223px; background: #222a2e center / cover no-repeat; position: relative; }
 .thumb .badge { position: absolute; left: 12px; top: 12px; }
 .thumb .corner { position: absolute; right: 12px; bottom: 12px; background: rgba(0,0,0,.8); padding: 4px 10px; border-radius: 8px; font-size: 22px; }
+.thumb .corner.left { left: 12px; right: auto; }
+.badge.new { background: #53fc18; color: #0b0e0f; }
+.chip .avatar { position: relative; }
+.chip.is-live .avatar::after { content: ''; position: absolute; right: -2px; bottom: -2px; width: 18px; height: 18px; border-radius: 50%; background: #e8132e; border: 3px solid #151a1c; }
 .thumb .resume { position: absolute; left: 0; bottom: 0; height: 6px; background: #53fc18; }
 .card-body { padding: 14px 16px 18px; }
 .card-title { font-size: 24px; line-height: 32px; height: 64px; overflow: hidden; }
@@ -126,6 +130,7 @@ button { font: inherit; color: inherit; background: none; border: 0; outline: no
 .badge.live { background: #e8132e; color: #fff; }
 .badge.behind { background: #4a5358; color: #fff; }
 .badge.ongoing { background: #53fc18; color: #0b0e0f; }
+.badge.watched { background: rgba(0,0,0,.8); color: #53fc18; }
 
 /* Search */
 .search-row { position: absolute; top: 130px; left: 80px; right: 80px; }
@@ -174,6 +179,7 @@ button { font: inherit; color: inherit; background: none; border: 0; outline: no
 .progress-knob { position: absolute; top: -9px; width: 28px; height: 28px; margin-left: -14px; border-radius: 50%; background: #fff; }
 .osd-row { display: flex; align-items: center; font-size: 28px; }
 .osd-row > * { margin-right: 30px; }
+.osd-viewers:empty { display: none; }
 .osd-quality { color: #53fc18; font-weight: 700; }
 .osd-hint { margin-left: auto; margin-right: 0; color: #e3e8ea; font-size: 24px; }
 

@@ -44,8 +44,10 @@ async function proxy(req, res, target) {
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname === '/proxy') { proxy(req, res, url.searchParams.get('u') || ''); return; }
-  const file = path.normalize(path.join(ROOT, decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname)));
-  if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
+  let rel;
+  try { rel = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname); } catch (e) { res.writeHead(400); res.end(); return; }
+  const file = path.normalize(path.join(ROOT, rel));
+  if (!file.startsWith(ROOT + path.sep)) { res.writeHead(403); res.end(); return; }  // stay inside app/
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });

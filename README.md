@@ -101,8 +101,9 @@ TV web engines are far weaker than a desktop browser, so the player is deliberat
   info is removed from the page (not just hidden) while it's off.
 - **Batched chat**: messages are added twice a second and capped at 50.
 - **Bounded lists** and small thumbnails, so long browsing sessions don't fill the TV's memory.
-- **Fast startup**: the 600 KB video library (hls.js) isn't loaded at launch. It starts loading in
-  the background when you open a channel, so it's ready by the time you press play.
+- **Fast startup**: the video library (hls.js, its 380 KB light build without subtitles, alternate
+  audio or DRM) isn't loaded at launch. It loads in the background once a channel page is drawn,
+  so it's ready by the time you press play.
 - **Lazy thumbnails**: images load only when a card gets within about one screen of view
   (16 instead of 24 on the first home screen; the rest as you scroll).
 - **Channel cache**: re-opening a channel within 2 minutes is instant and makes no network
@@ -167,7 +168,7 @@ app/                 The TV app (packaged into the .wgt)
   js/nav.js          Remote-control (spatial) navigation
   js/store.js        Local storage: follows, recents, resume points
   js/i18n.js         Interface texts in 10 languages
-  lib/hls.min.js     hls.js 1.7.3
+  lib/hls.light.min.js  hls.js 1.7.3, light build (no subtitles, alternate audio or DRM)
 dev/server.js        Local dev server and proxy
 scripts/build.py     .wgt packager
 ```

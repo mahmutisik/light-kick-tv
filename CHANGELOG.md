@@ -5,6 +5,42 @@ File** → `LightKickTV.wgt` from the release. Followed channels, resume points 
 
 <!-- Each release's notes on GitHub are taken from its section below (scripts/release_notes.py). -->
 
+## v1.0.8
+
+- **Continue watching**: the home screen shows your last 4 half-watched past broadcasts in one row;
+  OK resumes where you left off.
+- **New broadcasts**: past broadcasts released since your last visit to a channel are marked "New"
+  until you start them.
+- **Live details**: live cards show how long the stream has been on, recently watched channels that
+  are live get a red dot, and the player shows the viewer count (refreshed once a minute).
+- **Watched broadcasts stay marked**: a past broadcast watched to the end keeps a full bar and a
+  “Watched” label (it still starts from the beginning when opened again).
+- **Lighter on memory**: images far off screen are released while you scroll. A list scrolled to its
+  end now keeps about 36 pictures instead of 96 (roughly 90 MB down to 35 MB of decoded thumbnails on
+  the home screen).
+- **Thumbnails ready at start**: the first screen's thumbnails download while the splash is showing,
+  so they're already there when it fades.
+- **Smoother channel pages**: the video library is prepared after the page is drawn, clips load only
+  when their tab is opened, and coming back from a video only updates the progress bars instead of
+  rebuilding the list.
+- **Closed screens let go of their images**: leaving Categories, a category, search or a channel
+  page frees its pictures; they load again if you go back.
+- **Shorter splash**: on a fast connection the app now opens after 1 s instead of 1.3 s.
+- **Smaller video library**: the player now uses hls.js's light build (377 KB instead of 605 KB,
+  about 40 % less to parse), which leaves out subtitles, alternate audio and DRM. Kick's streams
+  don't use them.
+- **Fixes**:
+  - Seeking right after opening a past broadcast at its resume point started from the beginning and
+    lost the resume point; it now seeks from where you left off (and Back while it opens keeps it).
+  - Rewind: pressing OK while the recording was opening left seeking stuck until the end; reopening
+    the recording after reaching its end no longer skips ahead; → while it opens goes back to live.
+  - A rewind or back-to-live answer arriving after you left the player no longer affects the next
+    stream.
+  - Settings' followed list updates after you unfollow on a channel page.
+  - The focus no longer jumps to the top when a channel page finishes loading after you've moved,
+    and no longer gets lost after a search with no results or a retry.
+  - The What's new window waits for the home screen instead of being skipped.
+
 ## v1.0.7
 
 - **What's new window**: after an update, the app shows what changed in the new version, in your

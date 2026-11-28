@@ -42,6 +42,9 @@ var Store = (function () {
   function setResume(id, time, duration) {
     if (!id) return;
     var all = resumeAll();
+    // Within the last minute counts as watched to the end: no resume point (it starts from the
+    // beginning next time), but it is remembered as watched.
+    if (time >= 30 && duration && duration - time < 60) setWatched(id);
     if (!time || time < 30 || (duration && duration - time < 60)) delete all[id];
     else all[id] = { t: Math.floor(time), d: Math.floor(duration || 0), at: Date.now() };
     var ids = Object.keys(all).sort(function (a, b) { return all[b].at - all[a].at; });
@@ -49,11 +52,43 @@ var Store = (function () {
     write('kickizle.resume', all);
   }
 
+  /* What "Continue watching" needs to show and play a broadcast without opening its channel
+     (title, picture, video address...), kept for the 20 most recently played. */
+  function saveContinue(v) {
+    if (!v || !v.id || !v.source) return;
+    var all = read('kickizle.continue', {});
+    all[v.id] = { id: v.id, source: v.source, title: v.title || '', thumb: v.thumb || '', thumbFallback: v.thumbFallback || '',
+      duration: v.duration || 0, created: v.created || '', channel: v.channel || '', slug: v.slug || '', at: Date.now() };
+    var ids = Object.keys(all).sort(function (a, b) { return all[b].at - all[a].at; });
+    for (var i = 20; i < ids.length; i++) delete all[ids[i]];
+    write('kickizle.continue', all);
+  }
+  /* Half-watched broadcasts (a resume point exists), most recently watched first. */
+  function continueList(max) {
+    var all = read('kickizle.continue', {}), res = resumeAll();
+    return Object.keys(all).filter(function (id) { return res[id] && res[id].t; })
+      .sort(function (a, b) { return res[b].at - res[a].at; })
+      .slice(0, max).map(function (id) { return all[id]; });
+  }
+
+  /* Past broadcasts watched to the end (id -> when), the newest 200. */
+  function watchedAll() { return read('kickizle.watched', {}); }
+  function isWatched(id) { return !!(id && watchedAll()[id]); }
+  function setWatched(id) {
+    if (!id) return;
+    var all = watchedAll();
+    all[id] = Date.now();
+    var ids = Object.keys(all).sort(function (a, b) { return all[b] - all[a]; });
+    for (var i = 200; i < ids.length; i++) delete all[ids[i]];
+    write('kickizle.watched', all);
+  }
+
   return {
     get: read, set: write,
     recent: recent, addRecent: addRecent,
     follows: follows, isFollowed: isFollowed, follow: follow, unfollow: unfollow,
     searches: searches, addSearch: addSearch, clearSearches: clearSearches,
-    getResume: getResume, setResume: setResume
+    getResume: getResume, setResume: setResume, isWatched: isWatched, setWatched: setWatched,
+    saveContinue: saveContinue, continueList: continueList
   };
 }());
