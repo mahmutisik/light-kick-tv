@@ -17,17 +17,20 @@
 <body>
   <div id="stage">
 
+    <!-- Shared top bar on every screen except the player: logo (home), search, categories, filter,
+         settings. The current section is shown in green. -->
+    <header class="topbar shared" id="topbar">
+      <button class="brand focusable" id="btnHome" aria-label="Home"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"></button>
+      <nav class="topnav">
+        <button class="pill focusable" id="btnSearch" data-i18n="search"></button>
+        <button class="pill focusable" id="btnCategories" data-i18n="categories"></button>
+        <button class="pill focusable" id="btnFilter"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5Z"/></svg><span id="filterSummary"></span></button>
+        <button class="pill icon focusable" id="btnSettings" aria-label="Settings"><svg viewBox="0 0 24 24" width="34" height="34"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .3.2.5.5.5h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg></button>
+      </nav>
+    </header>
+
     <!-- Ana sayfa -->
     <section id="home" class="screen">
-      <header class="topbar">
-        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"></div>
-        <nav class="topnav">
-          <button class="pill focusable" id="btnSearch" data-i18n="search"></button>
-          <button class="pill focusable" id="btnCategories" data-i18n="categories"></button>
-          <button class="pill focusable" id="btnFilter"><svg viewBox="0 0 24 24" width="26" height="26"><path fill="currentColor" d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5Z"/></svg><span id="filterSummary"></span></button>
-          <button class="pill icon focusable" id="btnSettings" aria-label="Settings"><svg viewBox="0 0 24 24" width="34" height="34"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .3.2.5.5.5h4c.3 0 .5-.2.5-.4l.4-2.7c.6-.3 1.2-.6 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg></button>
-        </nav>
-      </header>
       <div class="scroller" id="homeScroll">
         <div id="followWrap" class="section hidden">
           <h2 data-i18n="followedLive"></h2>
@@ -49,28 +52,10 @@
         </div>
       </div>
 
-      <!-- Stream filter: edits a draft; nothing reloads until "Apply". -->
-      <div id="filterLayer" class="layer hidden">
-        <div class="panel">
-          <h3 data-i18n="filterTitle"></h3>
-          <div class="panel-label" data-i18n="streamLanguage"></div>
-          <div class="chips wrap" id="filterLangs"></div>
-          <div class="panel-label" data-i18n="sortBy"></div>
-          <div class="chips wrap" id="filterSort"></div>
-          <div class="panel-hint" id="filterHint"></div>
-          <div class="actions">
-            <button class="btn primary focusable" id="filterApply" data-i18n="apply"></button>
-            <button class="btn focusable" id="filterCancel" data-i18n="cancel"></button>
-          </div>
-        </div>
-      </div>
     </section>
 
     <!-- Arama -->
     <section id="search" class="screen hidden">
-      <header class="topbar">
-        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" data-i18n="search"></span></div>
-      </header>
       <div class="search-row">
         <input id="searchInput" class="focusable" type="text" autocomplete="off" spellcheck="false">
       </div>
@@ -91,9 +76,6 @@
 
     <!-- Games & categories -->
     <section id="categories" class="screen hidden">
-      <header class="topbar">
-        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" data-i18n="categories"></span></div>
-      </header>
       <div class="scroller" id="categoriesScroll">
         <div class="grid cats" id="catGrid"></div>
         <div class="note" id="catNote"></div>
@@ -102,11 +84,8 @@
 
     <!-- One game / category: its live streams -->
     <section id="category" class="screen hidden">
-      <header class="topbar">
-        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" id="catTitle"></span></div>
-        <div class="muted topbar-sub" id="catSub"></div>
-      </header>
       <div class="scroller" id="categoryScroll">
+        <div class="page-head"><h2 id="catTitle"></h2><span class="muted" id="catSub"></span></div>
         <div class="grid" id="catLiveGrid"></div>
         <div class="note" id="catLiveNote"></div>
       </div>
@@ -145,9 +124,6 @@
 
     <!-- Ayarlar -->
     <section id="settings" class="screen hidden">
-      <header class="topbar">
-        <div class="brand"><img class="brand-logo" src="img/kick-logo.svg" alt="Kick"><span class="brand-name" data-i18n="settings"></span></div>
-      </header>
       <div class="scroller" id="settingsScroll">
         <div class="section">
           <h2 data-i18n="uiLanguage"></h2>
@@ -207,6 +183,22 @@
         <div id="qualityList"></div>
       </div>
     </section>
+
+    <!-- Stream filter: edits a draft; nothing reloads until "Apply". -->
+    <div id="filterLayer" class="layer hidden">
+      <div class="panel">
+        <h3 data-i18n="filterTitle"></h3>
+        <div class="panel-label" data-i18n="streamLanguage"></div>
+        <div class="chips wrap" id="filterLangs"></div>
+        <div class="panel-label" data-i18n="sortBy"></div>
+        <div class="chips wrap" id="filterSort"></div>
+        <div class="panel-hint" id="filterHint"></div>
+        <div class="actions">
+          <button class="btn primary focusable" id="filterApply" data-i18n="apply"></button>
+          <button class="btn focusable" id="filterCancel" data-i18n="cancel"></button>
+        </div>
+      </div>
+    </div>
 
     <!-- What's new: shown once after an update (and from Settings > About) -->
     <div id="newsLayer" class="layer hidden">

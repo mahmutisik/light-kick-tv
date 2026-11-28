@@ -82,7 +82,8 @@ var Player = (function () {
     if (opts.rewind && rewind) label = I18n.t('behindLive', { t: fmt(Math.max(0, d - t) + (Date.now() - rewind.snapAt) / 1000 + RECORD_LAG_S) });
     if (liveArmed) { el('osdTime').textContent = I18n.t('okForLive'); return; }
     if (opening) { el('osdTime').textContent = I18n.t('behindLive', { t: fmt(rewindTarget + RECORD_LAG_S) }); return; }
-    el('osdTime').textContent = label + (video.paused ? '  ·  ' + I18n.t('paused') : '');
+    // "Paused" only once there is a picture (not while it is still opening).
+    el('osdTime').textContent = label + (video.paused && video.readyState >= 2 ? '  ·  ' + I18n.t('paused') : '');
   }
   function qualityLabel(i) {
     var l = levels[i]; if (!l) return '';
@@ -663,6 +664,7 @@ var Player = (function () {
       saveTimer = setInterval(function () { if (opts && !video.paused) Store.setResume(opts.vodId, video.currentTime, duration()); }, 10000);
     }
     load(o.url, startAt);
+    updateProgress();  // a resumed broadcast's bar shows its resume point at once, not after it starts
   }
 
   function stop() {

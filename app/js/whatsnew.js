@@ -2,6 +2,41 @@
    a matching section to CHANGELOG.md. Languages missing from an entry fall back to English. */
 var WhatsNew = [
   {
+    v: '1.1.0',
+    items: {
+      en: ['Resuming a past broadcast shows where you left off on the bar right away.',
+        'The top bar (logo, Search, Categories, filter, Settings) stays on every screen; the section you are in is green and the logo takes you home.',
+        'The stream filter now also works on a category page.'],
+      tr: ['Kaldığın yerden açılan geçmiş yayında bar, kaldığın yeri hemen gösterir.',
+        'Üst çubuk (logo, Ara, Kategoriler, filtre, Ayarlar) her ekranda kalır; bulunduğun bölüm yeşil görünür, logo ana sayfaya götürür.',
+        'Yayın filtresi artık kategori sayfasında da kullanılabilir.'],
+      es: ['Al reanudar una emisión, la barra muestra al instante dónde lo dejaste.',
+        'La barra superior (logo, Buscar, Categorías, filtro, Ajustes) se queda en todas las pantallas; la sección actual va en verde y el logo lleva al inicio.',
+        'El filtro de emisiones ahora también funciona en la página de una categoría.'],
+      ar: ['عند استئناف بث سابق يُظهر الشريط فورًا موضع توقفك.',
+        'الشريط العلوي (الشعار، البحث، الفئات، المرشّح، الإعدادات) يبقى في كل الشاشات؛ القسم الحالي بالأخضر والشعار يعيدك إلى الرئيسية.',
+        'مرشّح البثوث يعمل الآن أيضًا في صفحة الفئة.'],
+      pt: ['Ao retomar uma transmissão, a barra mostra na hora onde você parou.',
+        'A barra superior (logo, Buscar, Categorias, filtro, Configurações) fica em todas as telas; a seção atual fica verde e o logo leva ao início.',
+        'O filtro de transmissões agora também funciona na página de uma categoria.'],
+      de: ['Beim Fortsetzen zeigt der Balken sofort, wo du aufgehört hast.',
+        'Die obere Leiste (Logo, Suche, Kategorien, Filter, Einstellungen) bleibt auf jedem Bildschirm; der aktuelle Bereich ist grün, das Logo führt zum Start.',
+        'Der Stream-Filter funktioniert jetzt auch auf einer Kategorieseite.'],
+      fr: ['En reprenant une diffusion, la barre montre tout de suite où vous en étiez.',
+        'La barre du haut (logo, Recherche, Catégories, filtre, Paramètres) reste sur chaque écran ; la section actuelle est en vert et le logo ramène à l’accueil.',
+        'Le filtre des lives fonctionne aussi sur la page d’une catégorie.'],
+      ru: ['При продолжении трансляции полоска сразу показывает, где вы остановились.',
+        'Верхняя панель (логотип, Поиск, Категории, фильтр, Настройки) есть на каждом экране; текущий раздел выделен зелёным, логотип ведёт на главную.',
+        'Фильтр трансляций теперь работает и на странице категории.'],
+      pl: ['Po wznowieniu transmisji pasek od razu pokazuje, gdzie skończyłeś.',
+        'Górny pasek (logo, Szukaj, Kategorie, filtr, Ustawienia) zostaje na każdym ekranie; bieżąca sekcja jest zielona, a logo prowadzi do strony głównej.',
+        'Filtr transmisji działa teraz także na stronie kategorii.'],
+      it: ['Riprendendo una trasmissione, la barra mostra subito dove eri rimasto.',
+        'La barra in alto (logo, Cerca, Categorie, filtro, Impostazioni) resta su ogni schermata; la sezione attuale è in verde e il logo porta alla home.',
+        'Il filtro delle dirette ora funziona anche nella pagina di una categoria.']
+    }
+  },
+  {
     v: '1.0.9',
     items: {
       en: ['Seeking: holding ← / → speeds up; separate presses always move 10 s, so you can fine-tune after a long jump.',

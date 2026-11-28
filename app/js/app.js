@@ -91,6 +91,10 @@
     var screens = document.querySelectorAll('.screen');
     for (var i = 0; i < screens.length; i++) screens[i].classList.toggle('hidden', screens[i].id !== id);
     current = id;
+    el('topbar').classList.toggle('hidden', id === 'player');
+    el('btnSearch').classList.toggle('active', id === 'search');
+    el('btnCategories').classList.toggle('active', id === 'categories' || id === 'category');
+    el('btnSettings').classList.toggle('active', id === 'settings');
     Nav.setScope(el(id), preferred);
     var scs = el(id).querySelectorAll('.scroller');
     for (var j = 0; j < scs.length; j++) checkLazy(scs[j]);
@@ -98,7 +102,21 @@
   function go(id) {
     if (current) stack.push({ id: current, focus: Nav.getFocused() });
     showScreen(id);
+    var f = Nav.getFocused();
+    if (f && el('topbar').contains(f)) {
+      var own = firstFocusable(el(id));
+      if (own) Nav.focus(own); else wantContent = id;  // still loading: move in once there is something
+    }
   }
+  var wantContent = null;
+  function firstFocusable(box) {
+    var all = box.querySelectorAll('.focusable');
+    for (var i = 0; i < all.length; i++) if (all[i].offsetWidth) return all[i];
+    return null;
+  }
+  /* The bar: the logo goes home (closing the screens on the way), the others open their screen
+     (or, if it is already open, stay). */
+  function goHome() { var guard = 10; while (current !== 'home' && current !== 'player' && stack.length && guard--) back(); }
   function back() {
     if (!stack.length) { tryExit(); return; }
     if (current === 'player') clearTimeout(releaseTimer);
@@ -439,8 +457,9 @@
       Store.set('kickizle.filter', next);
       renderHomeHeader();
       loadLive(true);
+      if (current === 'category' && cat.data) { el('catSub').textContent = langsSummary(home.filter); loadCategoryLive(true); }
     }
-    Nav.setScope(el('home'), el('btnFilter'));
+    Nav.setScope(el(current), el('btnFilter'));
     maybeShowNews();
   }
 
@@ -487,6 +506,7 @@
 
   /* ---------- Ayarlar ---------- */
   function openSettings() {
+    if (current === 'settings') return;
     go('settings');
     renderSettings();
     Nav.setScope(el('settings'));
@@ -629,6 +649,8 @@
 
   /* ---------- Games & categories ---------- */
   function openCategories() {
+    if (current === 'categories') return;
+    if (current === 'category' && stack.length && stack[stack.length - 1].id === 'categories') { back(); return; }
     go('categories');
     if (cats.items.length) { Nav.setScope(el('categories')); return; }
     loadCategories(true);
@@ -658,8 +680,12 @@
   }
   /* A screen that had nothing to focus yet (still loading): focus its first card once there is one. */
   function focusInto(id, preferred) {
+    if (current !== id) return;
     var f = Nav.getFocused();
-    if (current === id && (!f || !el(id).contains(f) || !f.offsetWidth)) Nav.setScope(el(id), preferred);
+    var ok = f && f.offsetWidth && (el(id).contains(f) || (el('topbar').contains(f) && wantContent !== id));
+    if (ok) return;
+    Nav.setScope(el(id), preferred || firstFocusable(el(id)));
+    if (el(id).contains(Nav.getFocused())) wantContent = null;
   }
   /* One game / category: its live streams, most watched first, in the home filter's languages. */
   function openCategory(c) {
@@ -755,6 +781,7 @@
     });
   }
   function openSearch() {
+    if (current === 'search') { Nav.focus(el('searchInput')); return; }
     go('search');
     var input = el('searchInput');
     input.placeholder = I18n.t('searchPlaceholder');
@@ -1110,6 +1137,7 @@
       return;
     }
 
+    if (code === K.LEFT || code === K.RIGHT || code === K.UP || code === K.DOWN) wantContent = null;
     if (code === K.LEFT) Nav.move('left');
     else if (code === K.RIGHT) Nav.move('right');
     else if (code === K.UP) Nav.move('up');
@@ -1138,6 +1166,8 @@
       followPending = true;
     } else renderFollowed(true);
 
+    Nav.setShared(el('topbar'));
+    el('btnHome').onclick = goHome;
     el('btnSearch').onclick = openSearch;
     el('btnCategories').onclick = openCategories;
     el('aboutRow').onclick = function () { el('aboutStatus').textContent = I18n.t('loading'); checkUpdate(true); };

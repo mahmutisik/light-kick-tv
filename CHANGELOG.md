@@ -5,6 +5,17 @@ File** → `LightKickTV.wgt` from the release. Followed channels, resume points 
 
 <!-- Each release's notes on GitHub are taken from its section below (scripts/release_notes.py). -->
 
+## v1.1.0
+
+- **Top bar on every screen**: the Kick logo, Search, Categories, the stream filter and Settings stay
+  at the top of every screen (not in the player). The section you are in is shown in green, and the logo goes back to
+  the home screen. The remote reaches the bar with ↑ from anywhere.
+- **Filter on category pages**: the stream filter is available everywhere; changing the languages on a
+  category page reloads that category's streams (and the home list).
+- **Resume shows where you are at once**: opening a half-watched past broadcast (from Continue
+  watching or a channel page) now puts the bar and time at the resume point immediately, instead of
+  at the start until playback begins. "Paused" no longer shows while it is still opening.
+
 ## v1.0.9
 
 - **Back cancels a seek**: pressing Back while seeking (before playing on) returns to where the seek

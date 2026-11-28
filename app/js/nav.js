@@ -6,7 +6,7 @@ var Nav = (function () {
     PLAY: 415, PAUSE: 19, PLAYPAUSE: 10252, STOP: 413, FF: 417, RW: 412, SPACE: 32,
     IME_DONE: 65376, IME_CANCEL: 65385
   };
-  var scope = null, focused = null, focusHook = null;
+  var scope = null, focused = null, focusHook = null, shared = null;
 
   function registerKeys() {
     try {
@@ -22,11 +22,16 @@ var Nav = (function () {
      (display:none screens, hidden sections) have an empty rect and are skipped. */
   function candidates() {
     if (!scope) return [];
-    var all = scope.querySelectorAll('.focusable'), out = [];
-    for (var i = 0; i < all.length; i++) {
-      var r = all[i].getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) out.push({ el: all[i], r: r });
+    var out = [];
+    function add(all) {
+      for (var i = 0; i < all.length; i++) {
+        var r = all[i].getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) out.push({ el: all[i], r: r });
+      }
     }
+    add(scope.querySelectorAll('.focusable'));  // the screen's own items first (the default focus)
+    // The shared top bar belongs to every screen (not to panels or menus opened over one).
+    if (shared && scope.classList.contains('screen')) add(shared.querySelectorAll('.focusable'));
     return out;
   }
   function indexOfEl(list, el) { for (var i = 0; i < list.length; i++) if (list[i].el === el) return i; return -1; }
@@ -118,6 +123,7 @@ var Nav = (function () {
   return {
     KEY: KEY, registerKeys: registerKeys, move: move, focus: focus, setScope: setScope,
     getFocused: function () { return focused; }, isBack: isBack,
+    setShared: function (el) { shared = el; },
     onFocus: function (fn) { focusHook = fn; }
   };
 }());
