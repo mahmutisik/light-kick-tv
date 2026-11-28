@@ -17,7 +17,7 @@
     return f;
   }
   var home = { filter: loadFilter(), cursor: null, items: [], hasMore: false, loading: false, seq: 0 };
-  var draft = null, filterOpen = false;
+  var draft = null, filterOpen = false, newsOpen = false, newsReturn = null;
   var chan = { slug: null, data: null, vods: [], seq: 0, watching: 0 };
   var cats = { page: 1, items: [], hasMore: false, loading: false, seq: 0 };  // games & categories list
   var cat = { data: null, cursor: null, items: [], hasMore: false, loading: false, seq: 0 };  // one category's streams
@@ -515,6 +515,7 @@
       if (s.parentNode) s.parentNode.removeChild(s);
       var scs = current ? el(current).querySelectorAll('.scroller') : [];
       for (var i = 0; i < scs.length; i++) checkLazy(scs[i]);  // now load the thumbnails
+      setTimeout(maybeShowNews, 400);
       setTimeout(function () { checkUpdate(false); }, 4000);  // well after start-up
     }, 480);
   }
@@ -897,6 +898,51 @@
     });
   }
 
+  /* ---------- What's new ----------
+     After an update the app shows, once, what the new version brings (lists in whatsnew.js, in the
+     interface language). A first install shows nothing. Settings > About opens it again. */
+  var newsChecked = false;
+  function newsSince(seen) {
+    return (window.WhatsNew || []).filter(function (e) {
+      return (!seen || isNewer(e.v, seen)) && !isNewer(e.v, appVersion);
+    }).slice(0, 2);  // at most the last two versions, so the panel fits the screen
+  }
+  function openNews(entries) {
+    if (!entries.length) return;
+    var box = el('newsList'), lang = I18n.getLang();
+    box.innerHTML = '';
+    entries.forEach(function (e) {
+      if (entries.length > 1 || e.v !== appVersion) box.appendChild(make('div', 'panel-label', I18n.t('versionLabel', { v: e.v })));
+      var ul = make('ul', 'news');
+      (e.items[lang] || e.items.en || []).forEach(function (t) { ul.appendChild(make('li', '', t)); });
+      box.appendChild(ul);
+    });
+    newsReturn = Nav.getFocused();
+    newsOpen = true;
+    el('newsLayer').classList.remove('hidden');
+    Nav.setScope(el('newsLayer'), el('newsOk'));
+  }
+  function closeNews() {
+    newsOpen = false;
+    el('newsLayer').classList.add('hidden');
+    Nav.setScope(el(current), newsReturn);
+  }
+  function maybeShowNews() {
+    if (newsChecked || !appVersion || splashOpen) return;
+    newsChecked = true;
+    var seen = Store.get('kickizle.seenVersion', null);
+    Store.set('kickizle.seenVersion', appVersion);
+    if (seen === null) {
+      // No record yet: a first install (nothing stored) shows nothing; an update from a version
+      // before this feature (1.0.6 or older) shows the recent lists.
+      var used = Store.recent().length || Store.follows().length || Store.get('kickizle.filter', null) || Store.get('kickizle.ui', null);
+      if (!used) return;
+      seen = '1.0.5';
+    }
+    if (!isNewer(appVersion, seen) || current !== 'home' || filterOpen) return;
+    openNews(newsSince(seen));
+  }
+
   /* ---------- Tuşlar ---------- */
   function onKey(e) {
     var code = e.keyCode;
@@ -907,6 +953,12 @@
       return;
     }
     if (current === 'player') { if (Player.handleKey(code)) e.preventDefault(); return; }
+    if (newsOpen) {
+      if (code === K.ENTER) closeNews();
+      else if (Nav.isBack(code)) closeNews();
+      e.preventDefault();
+      return;
+    }
     if (filterOpen) {
       if (code === K.LEFT) Nav.move('left');
       else if (code === K.RIGHT) Nav.move('right');
@@ -957,7 +1009,9 @@
     el('btnSearch').onclick = openSearch;
     el('btnCategories').onclick = openCategories;
     el('aboutRow').onclick = function () { el('aboutStatus').textContent = I18n.t('loading'); checkUpdate(true); };
-    readVersion(function (v) { appVersion = v; renderAbout(); });
+    readVersion(function (v) { appVersion = v; renderAbout(); maybeShowNews(); });
+    el('newsOk').onclick = closeNews;
+    el('btnWhatsNew').onclick = function () { openNews(newsSince(null)); };
     el('btnFilter').onclick = openFilter;
     el('filterApply').onclick = function () { closeFilter(true); };
     el('filterCancel').onclick = function () { closeFilter(false); };

@@ -43,6 +43,8 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
 - **Settings** (⚙): manage followed channels, switch the interface language, see the app version
 - **Update notice**: once a day the app checks GitHub for a newer release and tells you once when
   there is one (install it with Apps2Samsung as before)
+- **What's new**: after an update, a short list of what changed, in your language (again any time
+  from Settings › About). Full history in [CHANGELOG.md](CHANGELOG.md).
 - Interface in **10 languages**: English, Türkçe, Español, العربية, Português, Deutsch, Français,
   Русский, Polski, Italiano. The app starts in the TV's menu language when it's one of these,
   otherwise in English. Numbers and dates follow the chosen language.
@@ -172,7 +174,9 @@ scripts/build.py     .wgt packager
 
 ### Releasing
 
-Bump `version` in `app/config.xml`, commit, then push a matching tag:
+Bump `version` in `app/config.xml`, add the version's section to [CHANGELOG.md](CHANGELOG.md) (the
+release notes on GitHub come from it) and its in-app "What's new" list to `app/js/whatsnew.js`,
+commit, then push a matching tag:
 
 ```sh
 git tag v1.0.1 && git push origin v1.0.1

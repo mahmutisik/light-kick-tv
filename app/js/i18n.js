@@ -37,6 +37,7 @@ var I18n = (function () {
       apply: 'Apply', cancel: 'Cancel', filterHint: 'Changes take effect when you press "Apply". You can pick several languages.',
       featuredAllNote: 'Note: with "All" + "Recommended", Kick mostly recommends English streams.',
       startError: 'Couldn\'t load streams.', startRetry: 'Check your connection and press OK to try again.',
+      whatsNew: 'What\'s new', ok: 'OK',
       categories: 'Categories', gamesAndCategories: 'Games & categories', channelsTitle: 'Channels', noCategoryStreams: 'No live streams in this category in the selected languages.', clips: 'Clips', noClips: 'This channel has no clips.', wentLive: '{name} just went live!', updateAvailable: 'New version available: {v}. Update it with Apps2Samsung.', about: 'About', versionLabel: 'Version {v}', upToDate: 'Up to date',
       rewindBadge: 'BEHIND LIVE', behindLive: '{t} behind live', rewindUnavailable: 'Rewind isn\'t available for this stream', backToLive: 'Back to live', hintRewind: '← → seek · OK play/pause · → to the end: live · Back: exit'
     },
@@ -63,6 +64,7 @@ var I18n = (function () {
       apply: 'Uygula', cancel: 'İptal', filterHint: 'Değişiklikler "Uygula"ya basınca geçerli olur. Birden fazla dil seçebilirsin.',
       featuredAllNote: 'Not: "Tümü" + "Önerilen" seçiliyken Kick çoğunlukla İngilizce yayınlar öneriyor.',
       startError: 'Yayınlar yüklenemedi.', startRetry: 'Bağlantınızı kontrol edin ve tekrar denemek için OK tuşuna basın.',
+      whatsNew: 'Yenilikler', ok: 'Tamam',
       categories: 'Kategoriler', gamesAndCategories: 'Oyunlar ve kategoriler', channelsTitle: 'Kanallar', noCategoryStreams: 'Seçili dillerde bu kategoride canlı yayın yok.', clips: 'Klipler', noClips: 'Bu kanalın klibi yok.', wentLive: '{name} canlı yayına başladı!', updateAvailable: 'Yeni sürüm var: {v}. Apps2Samsung ile güncelleyebilirsin.', about: 'Hakkında', versionLabel: 'Sürüm {v}', upToDate: 'Güncel',
       rewindBadge: 'GERİDE', behindLive: '{t} geride', rewindUnavailable: 'Bu yayında geri sarma yok', backToLive: 'Canlıya dönülüyor', hintRewind: '← → sar · OK oynat/duraklat · sona sar: canlı · Geri: çıkış'
     },
@@ -89,6 +91,7 @@ var I18n = (function () {
       apply: 'Aplicar', cancel: 'Cancelar', filterHint: 'Los cambios se aplican al pulsar "Aplicar". Puedes elegir varios idiomas.',
       featuredAllNote: 'Nota: con "Todos" + "Recomendados", Kick recomienda sobre todo emisiones en inglés.',
       startError: 'No se pudieron cargar los directos.', startRetry: 'Comprueba la conexión y pulsa OK para reintentar.',
+      whatsNew: 'Novedades', ok: 'Aceptar',
       categories: 'Categorías', gamesAndCategories: 'Juegos y categorías', channelsTitle: 'Canales', noCategoryStreams: 'No hay directos en esta categoría en los idiomas elegidos.', clips: 'Clips', noClips: 'Este canal no tiene clips.', wentLive: '¡{name} acaba de empezar un directo!', updateAvailable: 'Nueva versión disponible: {v}. Actualízala con Apps2Samsung.', about: 'Acerca de', versionLabel: 'Versión {v}', upToDate: 'Actualizada',
       rewindBadge: 'EN DIFERIDO', behindLive: '{t} por detrás del directo', rewindUnavailable: 'Este directo no se puede rebobinar', backToLive: 'Volviendo al directo', hintRewind: '← → avanzar/retroceder · OK reproducir/pausa · al final: directo · Atrás: salir'
     },
@@ -115,6 +118,7 @@ var I18n = (function () {
       apply: 'تطبيق', cancel: 'إلغاء', filterHint: 'تُطبَّق التغييرات عند الضغط على "تطبيق". يمكنك اختيار أكثر من لغة.',
       featuredAllNote: 'ملاحظة: عند اختيار "الكل" + "المقترحة" يقترح Kick غالبًا بثوثًا باللغة الإنجليزية.',
       startError: 'تعذّر تحميل البثوث.', startRetry: 'تحقّق من الاتصال واضغط OK لإعادة المحاولة.',
+      whatsNew: 'ما الجديد', ok: 'حسنًا',
       categories: 'الفئات', gamesAndCategories: 'الألعاب والفئات', channelsTitle: 'القنوات', noCategoryStreams: 'لا توجد بثوث مباشرة في هذه الفئة باللغات المختارة.', clips: 'المقاطع', noClips: 'لا توجد مقاطع لهذه القناة.', wentLive: 'بدأ {name} البث المباشر!', updateAvailable: 'يتوفر إصدار جديد: {v}. حدّثه عبر Apps2Samsung.', about: 'حول التطبيق', versionLabel: 'الإصدار {v}', upToDate: 'محدّث',
       rewindBadge: 'متأخر عن المباشر', behindLive: 'متأخر {t} عن المباشر', rewindUnavailable: 'لا يمكن الترجيع في هذا البث', backToLive: 'العودة إلى البث المباشر', hintRewind: '← → تقديم/ترجيع · OK تشغيل/إيقاف · إلى النهاية: مباشر · رجوع: خروج'
     },
@@ -141,6 +145,7 @@ var I18n = (function () {
       apply: 'Aplicar', cancel: 'Cancelar', filterHint: 'As alterações valem quando você pressiona "Aplicar". Você pode escolher vários idiomas.',
       featuredAllNote: 'Obs.: com "Todos" + "Recomendados", a Kick recomenda principalmente transmissões em inglês.',
       startError: 'Não foi possível carregar as transmissões.', startRetry: 'Verifique a conexão e pressione OK para tentar de novo.',
+      whatsNew: 'Novidades', ok: 'OK',
       categories: 'Categorias', gamesAndCategories: 'Jogos e categorias', channelsTitle: 'Canais', noCategoryStreams: 'Nenhuma transmissão ao vivo nesta categoria nos idiomas selecionados.', clips: 'Clipes', noClips: 'Este canal não tem clipes.', wentLive: '{name} acabou de entrar ao vivo!', updateAvailable: 'Nova versão disponível: {v}. Atualize pelo Apps2Samsung.', about: 'Sobre', versionLabel: 'Versão {v}', upToDate: 'Atualizado',
       rewindBadge: 'ATRASADO', behindLive: '{t} atrás do ao vivo', rewindUnavailable: 'Não é possível voltar nesta transmissão', backToLive: 'Voltando para o ao vivo', hintRewind: '← → avançar/voltar · OK reproduzir/pausar · até o fim: ao vivo · Voltar: sair'
     },
@@ -167,6 +172,7 @@ var I18n = (function () {
       apply: 'Übernehmen', cancel: 'Abbrechen', filterHint: 'Änderungen gelten erst nach "Übernehmen". Du kannst mehrere Sprachen wählen.',
       featuredAllNote: 'Hinweis: Bei "Alle" + "Empfohlen" empfiehlt Kick fast nur englische Streams.',
       startError: 'Streams konnten nicht geladen werden.', startRetry: 'Prüfe die Verbindung und drücke OK, um es erneut zu versuchen.',
+      whatsNew: 'Neuigkeiten', ok: 'OK',
       categories: 'Kategorien', gamesAndCategories: 'Spiele & Kategorien', channelsTitle: 'Kanäle', noCategoryStreams: 'Keine Livestreams in dieser Kategorie in den gewählten Sprachen.', clips: 'Clips', noClips: 'Dieser Kanal hat keine Clips.', wentLive: '{name} ist jetzt live!', updateAvailable: 'Neue Version verfügbar: {v}. Aktualisiere sie mit Apps2Samsung.', about: 'Info', versionLabel: 'Version {v}', upToDate: 'Aktuell',
       rewindBadge: 'ZEITVERSETZT', behindLive: '{t} hinter live', rewindUnavailable: 'Zurückspulen ist bei diesem Stream nicht möglich', backToLive: 'Zurück zu live', hintRewind: '← → spulen · OK Wiedergabe/Pause · bis zum Ende: live · Zurück: beenden'
     },
@@ -193,6 +199,7 @@ var I18n = (function () {
       apply: 'Appliquer', cancel: 'Annuler', filterHint: 'Les changements s’appliquent quand vous appuyez sur « Appliquer ». Vous pouvez choisir plusieurs langues.',
       featuredAllNote: 'Remarque : avec « Toutes » + « Recommandés », Kick recommande surtout des lives en anglais.',
       startError: 'Impossible de charger les lives.', startRetry: 'Vérifiez la connexion et appuyez sur OK pour réessayer.',
+      whatsNew: 'Nouveautés', ok: 'OK',
       categories: 'Catégories', gamesAndCategories: 'Jeux et catégories', channelsTitle: 'Chaînes', noCategoryStreams: 'Aucun live dans cette catégorie pour les langues choisies.', clips: 'Clips', noClips: 'Cette chaîne n’a pas de clips.', wentLive: '{name} vient de lancer un live !', updateAvailable: 'Nouvelle version disponible : {v}. Mettez-la à jour avec Apps2Samsung.', about: 'À propos', versionLabel: 'Version {v}', upToDate: 'À jour',
       rewindBadge: 'EN DIFFÉRÉ', behindLive: '{t} de retard sur le direct', rewindUnavailable: 'Impossible de revenir en arrière sur ce live', backToLive: 'Retour au direct', hintRewind: '← → avancer/reculer · OK lecture/pause · jusqu’à la fin : direct · Retour : quitter'
     },
@@ -219,6 +226,7 @@ var I18n = (function () {
       apply: 'Применить', cancel: 'Отмена', filterHint: 'Изменения вступают в силу после нажатия «Применить». Можно выбрать несколько языков.',
       featuredAllNote: 'Примечание: при «Все» + «Рекомендуемые» Kick в основном предлагает англоязычные трансляции.',
       startError: 'Не удалось загрузить трансляции.', startRetry: 'Проверьте подключение и нажмите OK, чтобы повторить.',
+      whatsNew: 'Что нового', ok: 'ОК',
       categories: 'Категории', gamesAndCategories: 'Игры и категории', channelsTitle: 'Каналы', noCategoryStreams: 'В этой категории нет эфиров на выбранных языках.', clips: 'Клипы', noClips: 'У этого канала нет клипов.', wentLive: '{name} начал трансляцию!', updateAvailable: 'Доступна новая версия: {v}. Обновите её через Apps2Samsung.', about: 'О приложении', versionLabel: 'Версия {v}', upToDate: 'Последняя версия',
       rewindBadge: 'ОТСТАВАНИЕ', behindLive: 'отставание: {t}', rewindUnavailable: 'Перемотка недоступна для этой трансляции', backToLive: 'Возврат в эфир', hintRewind: '← → перемотка · OK воспр./пауза · до конца: эфир · Назад: выход'
     },
@@ -245,6 +253,7 @@ var I18n = (function () {
       apply: 'Zastosuj', cancel: 'Anuluj', filterHint: 'Zmiany zaczną obowiązywać po naciśnięciu „Zastosuj”. Możesz wybrać kilka języków.',
       featuredAllNote: 'Uwaga: przy „Wszystkie” + „Polecane” Kick poleca głównie transmisje po angielsku.',
       startError: 'Nie udało się załadować transmisji.', startRetry: 'Sprawdź połączenie i naciśnij OK, aby spróbować ponownie.',
+      whatsNew: 'Co nowego', ok: 'OK',
       categories: 'Kategorie', gamesAndCategories: 'Gry i kategorie', channelsTitle: 'Kanały', noCategoryStreams: 'Brak transmisji na żywo w tej kategorii w wybranych językach.', clips: 'Klipy', noClips: 'Ten kanał nie ma klipów.', wentLive: '{name} właśnie zaczyna transmisję!', updateAvailable: 'Dostępna nowa wersja: {v}. Zaktualizuj ją przez Apps2Samsung.', about: 'O aplikacji', versionLabel: 'Wersja {v}', upToDate: 'Aktualna',
       rewindBadge: 'Z OPÓŹNIENIEM', behindLive: '{t} za transmisją na żywo', rewindUnavailable: 'Tej transmisji nie można cofnąć', backToLive: 'Powrót na żywo', hintRewind: '← → przewijanie · OK odtwórz/pauza · do końca: na żywo · Wstecz: wyjście'
     },
@@ -271,6 +280,7 @@ var I18n = (function () {
       apply: 'Applica', cancel: 'Annulla', filterHint: 'Le modifiche si applicano quando premi "Applica". Puoi scegliere più lingue.',
       featuredAllNote: 'Nota: con "Tutte" + "Consigliate", Kick consiglia soprattutto dirette in inglese.',
       startError: 'Impossibile caricare le dirette.', startRetry: 'Controlla la connessione e premi OK per riprovare.',
+      whatsNew: 'Novità', ok: 'OK',
       categories: 'Categorie', gamesAndCategories: 'Giochi e categorie', channelsTitle: 'Canali', noCategoryStreams: 'Nessuna diretta in questa categoria nelle lingue selezionate.', clips: 'Clip', noClips: 'Questo canale non ha clip.', wentLive: '{name} è appena andato in diretta!', updateAvailable: 'Nuova versione disponibile: {v}. Aggiornala con Apps2Samsung.', about: 'Info', versionLabel: 'Versione {v}', upToDate: 'Aggiornata',
       rewindBadge: 'IN DIFFERITA', behindLive: '{t} indietro rispetto alla diretta', rewindUnavailable: 'Non è possibile tornare indietro in questa diretta', backToLive: 'Ritorno alla diretta', hintRewind: '← → avanti/indietro · OK riproduci/pausa · fino alla fine: diretta · Indietro: esci'
     }
