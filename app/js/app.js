@@ -629,9 +629,22 @@
   function startLive(ch) {
     go('player');
     enteredPlayer();
+    var slug = ch.slug;
     Player.open({
       kind: 'live', url: ch.playbackUrl, channelName: ch.name, title: ch.title,
-      channelId: ch.id, chatroomId: ch.chatroomId
+      channelId: ch.id, chatroomId: ch.chatroomId,
+      // Rewind: the running stream's recording (the "ongoing" past broadcast), fetched fresh if the
+      // cached list doesn't have it yet.
+      getRecording: function (cb) {
+        function pick(vods) { for (var i = 0; vods && i < vods.length; i++) if (vods[i].ongoing) return vods[i]; return null; }
+        Api.videos(slug, function (err, vods) {
+          var v = !err && pick(vods);
+          if (v) { cb(v.source, v.created); return; }
+          Api.videos(slug, function (e2, v2) { var w = !e2 && pick(v2); cb(w ? w.source : null, w ? w.created : null); }, true);
+        });
+      },
+      // Back to live: always a fresh link.
+      getLiveUrl: function (cb) { Api.channel(slug, function (err, c) { cb(!err && c.live ? c.playbackUrl : null); }, true); }
     }, back);
   }
   function playVod(v) {

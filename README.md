@@ -22,6 +22,9 @@ those TVs. It also adds the thing the other TV apps were missing: **past broadca
   Most viewers. Changes apply only when you press Apply, so browsing the options costs nothing.
 - **Search** channels using Kick's own search, with your **recent searches** under the search box
 - **Channel page** with the live stream and the full list of **past broadcasts**
+- **Rewind live streams**: press ← while watching live to go back into the running stream's
+  recording; seek and pause as in a past broadcast, seek to the end to return to live. Chat closes
+  while rewinding and comes back with live.
 - **Seeking that respects the TV**: pressing ← / → pauses the video and shows the target frame;
   press OK to continue from there (see [Performance](#performance))
 - **Resume** past broadcasts where you left off, with a progress bar on each card
@@ -64,6 +67,8 @@ your followed channels, resume points and settings are kept.
 | Menus | Back | Previous screen (press twice on the home screen to exit) |
 | Player | ↑ | Quality menu |
 | Player (live) | ↓ | Show / hide chat |
+| Player (live) | ← / ⏪ | Rewind: opens the stream's recording 10 s back, paused; seek on from there |
+| Player (rewinding) | → to the end | Back to live (also happens automatically when you catch up) |
 | Player (past broadcast) | ← → / ⏪ ⏩ | Pause and seek: 10 s steps, growing to 30 s, 1 min and 3 min while held. The frame appears 1 s after you let go. |
 | Player (past broadcast) | OK / ⏯ | Play / pause |
 | Player | Back / ⏹ | Leave the player |

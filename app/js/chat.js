@@ -105,7 +105,10 @@ var Chat = (function () {
   function disconnect() {
     session++;
     clearTimeout(retryTimer);
-    clearTimeout(flushTimer); flushTimer = null; queue = [];
+    clearTimeout(flushTimer); flushTimer = null; queue = []; seen = {};
+    // Drop the shown messages (and their emote images): the next connect fetches fresh history,
+    // so keeping up to 50 hidden lines after leaving the player only costs TV memory.
+    if (list) list.innerHTML = '';
     if (socket) { try { socket.onclose = null; socket.close(); } catch (e) {} socket = null; }
   }
 

@@ -135,7 +135,7 @@ var Api = (function () {
     return { thumb: 'https://images.kick.com/video_thumbnails/' + m[1] + '/' + m[2] + '/480.webp', fallback: api };
   }
 
-  function videos(slug, cb) {
+  function videos(slug, cb, fresh) {
     cachedGet('https://kick.com/api/v2/channels/' + encodeURIComponent(slug) + '/videos', function (err, d) {
       if (err) { cb(err); return; }
       var list = Array.isArray(d) ? d : (d && d.data) || [];
@@ -149,7 +149,7 @@ var Api = (function () {
           thumb: th.thumb, thumbFallback: th.fallback
         };
       }).filter(function (x) { return !!x.source; }));
-    });
+    }, fresh);
   }
 
   function search(query, cb) {

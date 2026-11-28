@@ -25,7 +25,7 @@ var I18n = (function () {
       quality: 'Video quality', auto: 'Automatic', loadingStream: 'Loading stream…', buffering: 'Buffering…',
       playError: 'Playback failed', networkError: 'Connection problem, retrying…', streamEnded: 'Stream ended',
       hlsUnsupported: 'This TV cannot play HLS streams',
-      hintLive: '↑ quality · ↓ chat · Back: exit', hintVod: '← → seek (pauses) · OK play/pause · ↑ quality · Back: exit',
+      hintLive: '← rewind · ↑ quality · ↓ chat · Back: exit', hintVod: '← → seek (pauses) · OK play/pause · ↑ quality · Back: exit',
       resumed: 'Resuming where you left off ({t})', paused: 'Paused', exitHint: 'Press Back again to exit',
       follow: '+  Follow', following: '✓  Following', followedToast: 'Following {name}', unfollowedToast: 'Unfollowed {name}',
       followedLive: 'Followed channels live now', noFollowedLive: 'None of your followed channels are live right now.',
@@ -36,7 +36,8 @@ var I18n = (function () {
       allLangsShort: 'All languages', sortBy: 'Sort by', sortFeatured: 'Recommended', sortViewers: 'Most viewers',
       apply: 'Apply', cancel: 'Cancel', filterHint: 'Changes take effect when you press "Apply". You can pick several languages.',
       featuredAllNote: 'Note: with "All" + "Recommended", Kick mostly recommends English streams.',
-      startError: 'Couldn\'t load streams.', startRetry: 'Check your connection and press OK to try again.'
+      startError: 'Couldn\'t load streams.', startRetry: 'Check your connection and press OK to try again.',
+      rewindBadge: 'BEHIND LIVE', behindLive: '{t} behind live', rewindUnavailable: 'Rewind isn\'t available for this stream', backToLive: 'Back to live', hintRewind: '← → seek · OK play/pause · → to the end: live · Back: exit'
     },
     tr: {
       search: 'Ara', recentChannels: 'Son izlenen kanallar', loading: 'Yükleniyor…',
@@ -49,7 +50,7 @@ var I18n = (function () {
       quality: 'Görüntü kalitesi', auto: 'Otomatik', loadingStream: 'Yayın yükleniyor…', buffering: 'Arabelleğe alınıyor…',
       playError: 'Yayın oynatılamadı', networkError: 'Bağlantı hatası, yeniden deneniyor…', streamEnded: 'Yayın sona erdi',
       hlsUnsupported: 'Bu TV HLS yayınlarını oynatamıyor',
-      hintLive: '↑ kalite · ↓ sohbet · Geri: çıkış', hintVod: '← → sar (duraklatır) · OK oynat/duraklat · ↑ kalite · Geri: çıkış',
+      hintLive: '← geri sar · ↑ kalite · ↓ sohbet · Geri: çıkış', hintVod: '← → sar (duraklatır) · OK oynat/duraklat · ↑ kalite · Geri: çıkış',
       resumed: 'Kaldığınız yerden devam ediliyor ({t})', paused: 'Duraklatıldı', exitHint: 'Çıkmak için Geri tuşuna tekrar basın',
       follow: '+  Takip et', following: '✓  Takip ediliyor', followedToast: '{name} takip edildi', unfollowedToast: '{name} takipten çıkarıldı',
       followedLive: 'Takip edilen canlı yayınlar', noFollowedLive: 'Takip ettiğin kanallardan şu an canlı olan yok.',
@@ -60,7 +61,8 @@ var I18n = (function () {
       allLangsShort: 'Tüm diller', sortBy: 'Sıralama', sortFeatured: 'Önerilen', sortViewers: 'En çok izlenen',
       apply: 'Uygula', cancel: 'İptal', filterHint: 'Değişiklikler "Uygula"ya basınca geçerli olur. Birden fazla dil seçebilirsin.',
       featuredAllNote: 'Not: "Tümü" + "Önerilen" seçiliyken Kick çoğunlukla İngilizce yayınlar öneriyor.',
-      startError: 'Yayınlar yüklenemedi.', startRetry: 'Bağlantınızı kontrol edin ve tekrar denemek için OK tuşuna basın.'
+      startError: 'Yayınlar yüklenemedi.', startRetry: 'Bağlantınızı kontrol edin ve tekrar denemek için OK tuşuna basın.',
+      rewindBadge: 'GERİDE', behindLive: '{t} geride', rewindUnavailable: 'Bu yayında geri sarma yok', backToLive: 'Canlıya dönülüyor', hintRewind: '← → sar · OK oynat/duraklat · sona sar: canlı · Geri: çıkış'
     },
     es: {
       search: 'Buscar', recentChannels: 'Canales vistos recientemente', loading: 'Cargando…',
@@ -73,7 +75,7 @@ var I18n = (function () {
       quality: 'Calidad de vídeo', auto: 'Automática', loadingStream: 'Cargando emisión…', buffering: 'Cargando búfer…',
       playError: 'No se pudo reproducir', networkError: 'Problema de conexión, reintentando…', streamEnded: 'La emisión ha terminado',
       hlsUnsupported: 'Este televisor no puede reproducir emisiones HLS',
-      hintLive: '↑ calidad · ↓ chat · Atrás: salir', hintVod: '← → avanzar/retroceder (pausa) · OK reproducir/pausa · ↑ calidad · Atrás: salir',
+      hintLive: '← rebobinar · ↑ calidad · ↓ chat · Atrás: salir', hintVod: '← → avanzar/retroceder (pausa) · OK reproducir/pausa · ↑ calidad · Atrás: salir',
       resumed: 'Continuando donde lo dejaste ({t})', paused: 'En pausa', exitHint: 'Pulsa Atrás otra vez para salir',
       follow: '+  Seguir', following: '✓  Siguiendo', followedToast: 'Ahora sigues a {name}', unfollowedToast: 'Has dejado de seguir a {name}',
       followedLive: 'Canales seguidos en directo', noFollowedLive: 'Ninguno de tus canales seguidos está en directo ahora.',
@@ -84,7 +86,8 @@ var I18n = (function () {
       allLangsShort: 'Todos los idiomas', sortBy: 'Ordenar por', sortFeatured: 'Recomendados', sortViewers: 'Más espectadores',
       apply: 'Aplicar', cancel: 'Cancelar', filterHint: 'Los cambios se aplican al pulsar "Aplicar". Puedes elegir varios idiomas.',
       featuredAllNote: 'Nota: con "Todos" + "Recomendados", Kick recomienda sobre todo emisiones en inglés.',
-      startError: 'No se pudieron cargar los directos.', startRetry: 'Comprueba la conexión y pulsa OK para reintentar.'
+      startError: 'No se pudieron cargar los directos.', startRetry: 'Comprueba la conexión y pulsa OK para reintentar.',
+      rewindBadge: 'EN DIFERIDO', behindLive: '{t} por detrás del directo', rewindUnavailable: 'Este directo no se puede rebobinar', backToLive: 'Volviendo al directo', hintRewind: '← → avanzar/retroceder · OK reproducir/pausa · al final: directo · Atrás: salir'
     },
     ar: {
       search: 'بحث', recentChannels: 'القنوات التي شاهدتها مؤخرًا', loading: 'جارٍ التحميل…',
@@ -97,7 +100,7 @@ var I18n = (function () {
       quality: 'جودة الفيديو', auto: 'تلقائي', loadingStream: 'جارٍ تحميل البث…', buffering: 'جارٍ التخزين المؤقت…',
       playError: 'تعذّر تشغيل البث', networkError: 'مشكلة في الاتصال، جارٍ إعادة المحاولة…', streamEnded: 'انتهى البث',
       hlsUnsupported: 'هذا التلفاز لا يدعم بث HLS',
-      hintLive: '↑ الجودة · ↓ الدردشة · رجوع: خروج', hintVod: '← → تقديم/ترجيع (إيقاف مؤقت) · OK تشغيل/إيقاف · ↑ الجودة · رجوع: خروج',
+      hintLive: '← ترجيع · ↑ الجودة · ↓ الدردشة · رجوع: خروج', hintVod: '← → تقديم/ترجيع (إيقاف مؤقت) · OK تشغيل/إيقاف · ↑ الجودة · رجوع: خروج',
       resumed: 'متابعة من حيث توقفت ({t})', paused: 'متوقف مؤقتًا', exitHint: 'اضغط رجوع مرة أخرى للخروج',
       follow: '+  متابعة', following: '✓  تتابعه', followedToast: 'أنت تتابع {name} الآن', unfollowedToast: 'ألغيت متابعة {name}',
       followedLive: 'قنوات تتابعها تبث الآن', noFollowedLive: 'لا توجد قناة من القنوات التي تتابعها تبث الآن.',
@@ -108,7 +111,8 @@ var I18n = (function () {
       allLangsShort: 'كل اللغات', sortBy: 'الترتيب', sortFeatured: 'المقترحة', sortViewers: 'الأكثر مشاهدة',
       apply: 'تطبيق', cancel: 'إلغاء', filterHint: 'تُطبَّق التغييرات عند الضغط على "تطبيق". يمكنك اختيار أكثر من لغة.',
       featuredAllNote: 'ملاحظة: عند اختيار "الكل" + "المقترحة" يقترح Kick غالبًا بثوثًا باللغة الإنجليزية.',
-      startError: 'تعذّر تحميل البثوث.', startRetry: 'تحقّق من الاتصال واضغط OK لإعادة المحاولة.'
+      startError: 'تعذّر تحميل البثوث.', startRetry: 'تحقّق من الاتصال واضغط OK لإعادة المحاولة.',
+      rewindBadge: 'متأخر عن المباشر', behindLive: 'متأخر {t} عن المباشر', rewindUnavailable: 'لا يمكن الترجيع في هذا البث', backToLive: 'العودة إلى البث المباشر', hintRewind: '← → تقديم/ترجيع · OK تشغيل/إيقاف · إلى النهاية: مباشر · رجوع: خروج'
     },
     pt: {
       search: 'Buscar', recentChannels: 'Canais assistidos recentemente', loading: 'Carregando…',
@@ -121,7 +125,7 @@ var I18n = (function () {
       quality: 'Qualidade do vídeo', auto: 'Automática', loadingStream: 'Carregando transmissão…', buffering: 'Carregando buffer…',
       playError: 'Falha na reprodução', networkError: 'Problema de conexão, tentando novamente…', streamEnded: 'A transmissão terminou',
       hlsUnsupported: 'Esta TV não reproduz transmissões HLS',
-      hintLive: '↑ qualidade · ↓ chat · Voltar: sair', hintVod: '← → avançar/voltar (pausa) · OK reproduzir/pausar · ↑ qualidade · Voltar: sair',
+      hintLive: '← voltar · ↑ qualidade · ↓ chat · Voltar: sair', hintVod: '← → avançar/voltar (pausa) · OK reproduzir/pausar · ↑ qualidade · Voltar: sair',
       resumed: 'Continuando de onde você parou ({t})', paused: 'Pausado', exitHint: 'Pressione Voltar de novo para sair',
       follow: '+  Seguir', following: '✓  Seguindo', followedToast: 'Você está seguindo {name}', unfollowedToast: 'Você deixou de seguir {name}',
       followedLive: 'Canais seguidos ao vivo', noFollowedLive: 'Nenhum dos seus canais seguidos está ao vivo agora.',
@@ -132,7 +136,8 @@ var I18n = (function () {
       allLangsShort: 'Todos os idiomas', sortBy: 'Ordenar por', sortFeatured: 'Recomendados', sortViewers: 'Mais espectadores',
       apply: 'Aplicar', cancel: 'Cancelar', filterHint: 'As alterações valem quando você pressiona "Aplicar". Você pode escolher vários idiomas.',
       featuredAllNote: 'Obs.: com "Todos" + "Recomendados", a Kick recomenda principalmente transmissões em inglês.',
-      startError: 'Não foi possível carregar as transmissões.', startRetry: 'Verifique a conexão e pressione OK para tentar de novo.'
+      startError: 'Não foi possível carregar as transmissões.', startRetry: 'Verifique a conexão e pressione OK para tentar de novo.',
+      rewindBadge: 'ATRASADO', behindLive: '{t} atrás do ao vivo', rewindUnavailable: 'Não é possível voltar nesta transmissão', backToLive: 'Voltando para o ao vivo', hintRewind: '← → avançar/voltar · OK reproduzir/pausar · até o fim: ao vivo · Voltar: sair'
     },
     de: {
       search: 'Suchen', recentChannels: 'Zuletzt angesehene Kanäle', loading: 'Wird geladen…',
@@ -145,7 +150,7 @@ var I18n = (function () {
       quality: 'Videoqualität', auto: 'Automatisch', loadingStream: 'Stream wird geladen…', buffering: 'Puffern…',
       playError: 'Wiedergabe fehlgeschlagen', networkError: 'Verbindungsproblem, neuer Versuch…', streamEnded: 'Stream beendet',
       hlsUnsupported: 'Dieser Fernseher kann keine HLS-Streams abspielen',
-      hintLive: '↑ Qualität · ↓ Chat · Zurück: beenden', hintVod: '← → spulen (pausiert) · OK Wiedergabe/Pause · ↑ Qualität · Zurück: beenden',
+      hintLive: '← zurückspulen · ↑ Qualität · ↓ Chat · Zurück: beenden', hintVod: '← → spulen (pausiert) · OK Wiedergabe/Pause · ↑ Qualität · Zurück: beenden',
       resumed: 'Weiter an der letzten Stelle ({t})', paused: 'Pausiert', exitHint: 'Zum Beenden erneut Zurück drücken',
       follow: '+  Folgen', following: '✓  Gefolgt', followedToast: 'Du folgst jetzt {name}', unfollowedToast: 'Du folgst {name} nicht mehr',
       followedLive: 'Gefolgte Kanäle, die gerade live sind', noFollowedLive: 'Keiner deiner gefolgten Kanäle ist gerade live.',
@@ -156,7 +161,8 @@ var I18n = (function () {
       allLangsShort: 'Alle Sprachen', sortBy: 'Sortieren nach', sortFeatured: 'Empfohlen', sortViewers: 'Meiste Zuschauer',
       apply: 'Übernehmen', cancel: 'Abbrechen', filterHint: 'Änderungen gelten erst nach "Übernehmen". Du kannst mehrere Sprachen wählen.',
       featuredAllNote: 'Hinweis: Bei "Alle" + "Empfohlen" empfiehlt Kick fast nur englische Streams.',
-      startError: 'Streams konnten nicht geladen werden.', startRetry: 'Prüfe die Verbindung und drücke OK, um es erneut zu versuchen.'
+      startError: 'Streams konnten nicht geladen werden.', startRetry: 'Prüfe die Verbindung und drücke OK, um es erneut zu versuchen.',
+      rewindBadge: 'ZEITVERSETZT', behindLive: '{t} hinter live', rewindUnavailable: 'Zurückspulen ist bei diesem Stream nicht möglich', backToLive: 'Zurück zu live', hintRewind: '← → spulen · OK Wiedergabe/Pause · bis zum Ende: live · Zurück: beenden'
     },
     fr: {
       search: 'Rechercher', recentChannels: 'Chaînes regardées récemment', loading: 'Chargement…',
@@ -169,7 +175,7 @@ var I18n = (function () {
       quality: 'Qualité vidéo', auto: 'Automatique', loadingStream: 'Chargement du live…', buffering: 'Mise en mémoire tampon…',
       playError: 'Lecture impossible', networkError: 'Problème de connexion, nouvelle tentative…', streamEnded: 'Le live est terminé',
       hlsUnsupported: 'Ce téléviseur ne peut pas lire les flux HLS',
-      hintLive: '↑ qualité · ↓ chat · Retour : quitter', hintVod: '← → avancer/reculer (pause) · OK lecture/pause · ↑ qualité · Retour : quitter',
+      hintLive: '← revenir en arrière · ↑ qualité · ↓ chat · Retour : quitter', hintVod: '← → avancer/reculer (pause) · OK lecture/pause · ↑ qualité · Retour : quitter',
       resumed: 'Reprise là où vous vous étiez arrêté ({t})', paused: 'En pause', exitHint: 'Appuyez de nouveau sur Retour pour quitter',
       follow: '+  Suivre', following: '✓  Suivi', followedToast: 'Vous suivez {name}', unfollowedToast: 'Vous ne suivez plus {name}',
       followedLive: 'Chaînes suivies en direct', noFollowedLive: 'Aucune de vos chaînes suivies n’est en direct pour le moment.',
@@ -180,7 +186,8 @@ var I18n = (function () {
       allLangsShort: 'Toutes les langues', sortBy: 'Trier par', sortFeatured: 'Recommandés', sortViewers: 'Plus de spectateurs',
       apply: 'Appliquer', cancel: 'Annuler', filterHint: 'Les changements s’appliquent quand vous appuyez sur « Appliquer ». Vous pouvez choisir plusieurs langues.',
       featuredAllNote: 'Remarque : avec « Toutes » + « Recommandés », Kick recommande surtout des lives en anglais.',
-      startError: 'Impossible de charger les lives.', startRetry: 'Vérifiez la connexion et appuyez sur OK pour réessayer.'
+      startError: 'Impossible de charger les lives.', startRetry: 'Vérifiez la connexion et appuyez sur OK pour réessayer.',
+      rewindBadge: 'EN DIFFÉRÉ', behindLive: '{t} de retard sur le direct', rewindUnavailable: 'Impossible de revenir en arrière sur ce live', backToLive: 'Retour au direct', hintRewind: '← → avancer/reculer · OK lecture/pause · jusqu’à la fin : direct · Retour : quitter'
     },
     ru: {
       search: 'Поиск', recentChannels: 'Недавно просмотренные каналы', loading: 'Загрузка…',
@@ -193,7 +200,7 @@ var I18n = (function () {
       quality: 'Качество видео', auto: 'Авто', loadingStream: 'Загрузка трансляции…', buffering: 'Буферизация…',
       playError: 'Не удалось воспроизвести', networkError: 'Проблема с соединением, повторяем…', streamEnded: 'Трансляция завершена',
       hlsUnsupported: 'Этот телевизор не поддерживает HLS',
-      hintLive: '↑ качество · ↓ чат · Назад: выход', hintVod: '← → перемотка (пауза) · OK воспр./пауза · ↑ качество · Назад: выход',
+      hintLive: '← перемотка назад · ↑ качество · ↓ чат · Назад: выход', hintVod: '← → перемотка (пауза) · OK воспр./пауза · ↑ качество · Назад: выход',
       resumed: 'Продолжаем с места остановки ({t})', paused: 'Пауза', exitHint: 'Нажмите Назад ещё раз, чтобы выйти',
       follow: '+  Отслеживать', following: '✓  Отслеживается', followedToast: 'Вы отслеживаете {name}', unfollowedToast: '{name}: отслеживание отменено',
       followedLive: 'Отслеживаемые каналы в эфире', noFollowedLive: 'Сейчас никто из отслеживаемых каналов не в эфире.',
@@ -204,7 +211,8 @@ var I18n = (function () {
       allLangsShort: 'Все языки', sortBy: 'Сортировка', sortFeatured: 'Рекомендуемые', sortViewers: 'Больше зрителей',
       apply: 'Применить', cancel: 'Отмена', filterHint: 'Изменения вступают в силу после нажатия «Применить». Можно выбрать несколько языков.',
       featuredAllNote: 'Примечание: при «Все» + «Рекомендуемые» Kick в основном предлагает англоязычные трансляции.',
-      startError: 'Не удалось загрузить трансляции.', startRetry: 'Проверьте подключение и нажмите OK, чтобы повторить.'
+      startError: 'Не удалось загрузить трансляции.', startRetry: 'Проверьте подключение и нажмите OK, чтобы повторить.',
+      rewindBadge: 'ОТСТАВАНИЕ', behindLive: 'отставание: {t}', rewindUnavailable: 'Перемотка недоступна для этой трансляции', backToLive: 'Возврат в эфир', hintRewind: '← → перемотка · OK воспр./пауза · до конца: эфир · Назад: выход'
     },
     pl: {
       search: 'Szukaj', recentChannels: 'Ostatnio oglądane kanały', loading: 'Ładowanie…',
@@ -217,7 +225,7 @@ var I18n = (function () {
       quality: 'Jakość wideo', auto: 'Automatyczna', loadingStream: 'Ładowanie transmisji…', buffering: 'Buforowanie…',
       playError: 'Nie udało się odtworzyć', networkError: 'Problem z połączeniem, ponawiam…', streamEnded: 'Transmisja zakończona',
       hlsUnsupported: 'Ten telewizor nie obsługuje transmisji HLS',
-      hintLive: '↑ jakość · ↓ czat · Wstecz: wyjście', hintVod: '← → przewijanie (pauza) · OK odtwórz/pauza · ↑ jakość · Wstecz: wyjście',
+      hintLive: '← cofnij · ↑ jakość · ↓ czat · Wstecz: wyjście', hintVod: '← → przewijanie (pauza) · OK odtwórz/pauza · ↑ jakość · Wstecz: wyjście',
       resumed: 'Wznawianie od miejsca zatrzymania ({t})', paused: 'Wstrzymano', exitHint: 'Naciśnij Wstecz ponownie, aby wyjść',
       follow: '+  Obserwuj', following: '✓  Obserwujesz', followedToast: 'Obserwujesz {name}', unfollowedToast: 'Nie obserwujesz już {name}',
       followedLive: 'Obserwowane kanały na żywo', noFollowedLive: 'Żaden z obserwowanych kanałów nie nadaje teraz na żywo.',
@@ -228,7 +236,8 @@ var I18n = (function () {
       allLangsShort: 'Wszystkie języki', sortBy: 'Sortuj według', sortFeatured: 'Polecane', sortViewers: 'Najwięcej widzów',
       apply: 'Zastosuj', cancel: 'Anuluj', filterHint: 'Zmiany zaczną obowiązywać po naciśnięciu „Zastosuj”. Możesz wybrać kilka języków.',
       featuredAllNote: 'Uwaga: przy „Wszystkie” + „Polecane” Kick poleca głównie transmisje po angielsku.',
-      startError: 'Nie udało się załadować transmisji.', startRetry: 'Sprawdź połączenie i naciśnij OK, aby spróbować ponownie.'
+      startError: 'Nie udało się załadować transmisji.', startRetry: 'Sprawdź połączenie i naciśnij OK, aby spróbować ponownie.',
+      rewindBadge: 'Z OPÓŹNIENIEM', behindLive: '{t} za transmisją na żywo', rewindUnavailable: 'Tej transmisji nie można cofnąć', backToLive: 'Powrót na żywo', hintRewind: '← → przewijanie · OK odtwórz/pauza · do końca: na żywo · Wstecz: wyjście'
     },
     it: {
       search: 'Cerca', recentChannels: 'Canali visti di recente', loading: 'Caricamento…',
@@ -241,7 +250,7 @@ var I18n = (function () {
       quality: 'Qualità video', auto: 'Automatica', loadingStream: 'Caricamento della diretta…', buffering: 'Buffering…',
       playError: 'Riproduzione non riuscita', networkError: 'Problema di connessione, nuovo tentativo…', streamEnded: 'La diretta è terminata',
       hlsUnsupported: 'Questo televisore non riproduce flussi HLS',
-      hintLive: '↑ qualità · ↓ chat · Indietro: esci', hintVod: '← → avanti/indietro (pausa) · OK riproduci/pausa · ↑ qualità · Indietro: esci',
+      hintLive: '← torna indietro · ↑ qualità · ↓ chat · Indietro: esci', hintVod: '← → avanti/indietro (pausa) · OK riproduci/pausa · ↑ qualità · Indietro: esci',
       resumed: 'Riprendi da dove avevi lasciato ({t})', paused: 'In pausa', exitHint: 'Premi di nuovo Indietro per uscire',
       follow: '+  Segui', following: '✓  Segui già', followedToast: 'Ora segui {name}', unfollowedToast: 'Non segui più {name}',
       followedLive: 'Canali seguiti in diretta', noFollowedLive: 'Nessuno dei canali che segui è in diretta ora.',
@@ -252,7 +261,8 @@ var I18n = (function () {
       allLangsShort: 'Tutte le lingue', sortBy: 'Ordina per', sortFeatured: 'Consigliate', sortViewers: 'Più spettatori',
       apply: 'Applica', cancel: 'Annulla', filterHint: 'Le modifiche si applicano quando premi "Applica". Puoi scegliere più lingue.',
       featuredAllNote: 'Nota: con "Tutte" + "Consigliate", Kick consiglia soprattutto dirette in inglese.',
-      startError: 'Impossibile caricare le dirette.', startRetry: 'Controlla la connessione e premi OK per riprovare.'
+      startError: 'Impossibile caricare le dirette.', startRetry: 'Controlla la connessione e premi OK per riprovare.',
+      rewindBadge: 'IN DIFFERITA', behindLive: '{t} indietro rispetto alla diretta', rewindUnavailable: 'Non è possibile tornare indietro in questa diretta', backToLive: 'Ritorno alla diretta', hintRewind: '← → avanti/indietro · OK riproduci/pausa · fino alla fine: diretta · Indietro: esci'
     }
   };
 

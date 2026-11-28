@@ -7,6 +7,15 @@ var Player = (function () {
   var pendingSeek = null, lastSeekAt = 0, seekStreak = 0, retries = 0;
   var menuOpen = false, chatOn = false, levels = [];
   var loadingStopped = false, frameOnly = false, lastProgressAt = 0, waitTimer = null;
+  /* Rewind (live): Kick records a running stream and serves the recording so far as a finished
+     playlist. Rewinding switches the player to that recording (it then behaves like a past broadcast)
+     and back to the live stream when you reach its end. */
+  var rewind = null;              // { snapAt: ms when the recording was opened } while rewinding
+  var rewindBusy = false, startPaused = false;
+  // While the recording is opening the player doesn't know its position yet (it reads 0), so ← / →
+  // pressed in that time only change how far back to go (rewindTarget, seconds from the end).
+  var rewindLoading = false, rewindTarget = 10;
+  var RECORD_LAG_S = 15;          // the recording's end trails the live picture by roughly this much
   var SEEK_SETTLE_MS = 1000;  // sarmayı bıraktıktan sonra karenin yükleneceği bekleme süresi
   var OSD_HIDE_MS = 2500;     // oynatma sırasında bilgi çubuğunun kaybolma süresi
 
@@ -52,7 +61,9 @@ var Player = (function () {
     var buf = 0;
     for (var i = 0; i < video.buffered.length; i++) if (video.buffered.start(i) <= video.currentTime + 1) buf = video.buffered.end(i);
     el('progressBuffer').style.width = (d ? Math.min(100, buf / d * 100) : 0) + '%';
-    el('osdTime').textContent = fmt(t) + ' / ' + fmt(d) + (video.paused ? '  ·  ' + I18n.t('paused') : '');
+    var label = fmt(t) + ' / ' + fmt(d);
+    if (opts.rewind && rewind) label = I18n.t('behindLive', { t: fmt(Math.max(0, d - t) + (Date.now() - rewind.snapAt) / 1000 + RECORD_LAG_S) });
+    el('osdTime').textContent = label + (video.paused ? '  ·  ' + I18n.t('paused') : '');
   }
   function qualityLabel(i) {
     var l = levels[i]; if (!l) return '';
@@ -142,10 +153,11 @@ var Player = (function () {
     return Loader;
   }
 
-  function load(url, startAt) {
+  function load(url, startAt, paused) {
     var my = ++loadSeq;
     destroyHls();
     clearTimeout(retryTimer);
+    startPaused = !!paused;
     ensureHls(function () { if (my === loadSeq && opts) loadNow(url, startAt); });
   }
   function loadNow(url, startAt) {
@@ -164,8 +176,19 @@ var Player = (function () {
       if (Api.DEV) cfg.xhrSetup = function (xhr, u) { xhr.open('GET', Api.proxied(u), true); };
       cfg.startFragPrefetch = true;
       try { cfg.pLoader = makePlaylistLoader(); } catch (e) {}
+      if (startPaused) { cfg.maxBufferLength = 1; cfg.maxMaxBufferLength = 1; }  // just the frame
       hls = new Hls(cfg);
-      loadingStopped = false; frameOnly = false;
+      loadingStopped = false; frameOnly = startPaused;
+      if (opts.rewind) {
+        // The recording's real length is known once its playlist arrives: if our estimate of the
+        // start point overshot the end, move back to the requested distance from the end.
+        hls.once(Hls.Events.LEVEL_LOADED, function (e, d) {
+          var total = d && d.details && d.details.totalduration;
+          if (!total) return;
+          var want = Math.max(0, total - rewindTarget);
+          if (startAt > total - 3 || Math.abs(want - startAt) > 2) video.currentTime = want;
+        });
+      }
       hls.on(Hls.Events.MANIFEST_PARSED, function () {
         levels = hls.levels || [];
         try { hls.subtitleTrack = -1; hls.subtitleDisplay = false; } catch (e) {}
@@ -178,13 +201,25 @@ var Player = (function () {
           for (i = 1; i < levels.length; i++) if (levels[i].height > levels[best].height || (levels[i].height === levels[best].height && levels[i].bitrate > levels[best].bitrate)) best = i;
           hls.startLevel = best;
         }
-        play();
+        if (!startPaused) play();
         updateQualityText();
       });
       hls.on(Hls.Events.LEVEL_SWITCHED, updateQualityText);
       hls.on(Hls.Events.FRAG_BUFFERED, function (e, d) {
         // Duraklatılmış sarmada hedef noktayı içeren parça geldiyse indirmeyi hemen kes.
         var f = d && d.frag;
+        if (startPaused && video.paused) {
+          // Opened on a still frame (rewind): it's here, stop downloading and show the pause icon.
+          startPaused = false; frameOnly = false; stopLoading();
+          hideStatus(); el('pauseIcon').classList.remove('hidden');
+          if (opts.rewind && rewindLoading) {
+            rewindLoading = false;
+            var want = Math.max(0, duration() - rewindTarget);
+            if (duration() && Math.abs(video.currentTime - want) > 3) { pendingSeek = want; settleSeek(); }
+          }
+          updateProgress(); showOsd(true);
+          return;
+        }
         if (frameOnly && video.paused && f && f.start <= video.currentTime + 0.1 && f.start + f.duration > video.currentTime) stopLoading();
       });
       hls.on(Hls.Events.ERROR, function (e, d) {
@@ -265,6 +300,7 @@ var Player = (function () {
     });
     video.addEventListener('ended', function () {
       if (!opts) return;
+      if (opts.rewind) { rewindReachedEnd(); return; }
       if (isVod()) { Store.setResume(opts.vodId, 0, 0); exit(); }
       else { status('streamEnded', '', true); }
     });
@@ -274,13 +310,24 @@ var Player = (function () {
   }
 
   /* ---------- Sarma ---------- */
-  function seekBy(dir) {
-    if (!isVod()) return;
+  function seekStep() {
     var now = Date.now();
     seekStreak = now - lastSeekAt < 700 ? seekStreak + 1 : 0;
     lastSeekAt = now;
-    var step = seekStreak < 4 ? 10 : seekStreak < 10 ? 30 : seekStreak < 20 ? 60 : 180;
+    return seekStreak < 4 ? 10 : seekStreak < 10 ? 30 : seekStreak < 20 ? 60 : 180;
+  }
+  /* Presses while the recording is still opening: move the target, show how far back. */
+  function adjustRewind(dir) {
+    rewindTarget = Math.max(10, rewindTarget - dir * seekStep());
+    el('osdTime').textContent = I18n.t('behindLive', { t: fmt(rewindTarget + RECORD_LAG_S) });
+    showOsd(true);
+  }
+  function seekBy(dir) {
+    if (!isVod()) return;
+    if (opts.rewind && rewindLoading) { adjustRewind(dir); return; }
+    var step = seekStep();
     var base = pendingSeek !== null ? pendingSeek : video.currentTime, d = duration();
+    if (opts.rewind && dir > 0 && d && base + step >= d - 3) { goLive(); return; }
     pendingSeek = Math.max(0, Math.min(d ? d - 3 : base + step, base + dir * step));
     // Sarmaya başlayınca yayını duraklat: sarma sırasında video çözülmesin, boşuna indirilmesin.
     if (!video.paused) video.pause();
@@ -296,25 +343,28 @@ var Player = (function () {
     showOsd(true);
     clearTimeout(seekTimer);
     // Tuşa basmayı bırakıp SEEK_SETTLE_MS beklenince o noktanın tek karesini getir; OK ile oradan devam edilir.
-    seekTimer = setTimeout(function () {
-      if (pendingSeek === null) return;
-      if (!video.paused) { commitSeek(); return; }  // playback already resumed: never use frame-only mode
-      var target = pendingSeek;
-      pendingSeek = null;
-      if (hls) {
-        frameOnly = true;
-        setFrameBuffer(true);
-        if (!isBuffered(target)) {
-          loadingStopped = false;
-          hls.startLoad(target);
-          // The frame needs a download: show a spinner instead of the pause icon until it arrives.
-          el('pauseIcon').classList.add('hidden');
-          status('buffering', '');
-        }
+    seekTimer = setTimeout(settleSeek, SEEK_SETTLE_MS);
+  }
+  /* The seek target is chosen: fetch just that frame (paused) or jump there (playing). */
+  function settleSeek() {
+    clearTimeout(seekTimer);
+    if (pendingSeek === null) return;
+    if (!video.paused) { commitSeek(); return; }  // playback already resumed: never use frame-only mode
+    var target = pendingSeek;
+    pendingSeek = null;
+    if (hls) {
+      frameOnly = true;
+      setFrameBuffer(true);
+      if (!isBuffered(target)) {
+        loadingStopped = false;
+        hls.startLoad(target);
+        // The frame needs a download: show a spinner instead of the pause icon until it arrives.
+        el('pauseIcon').classList.add('hidden');
+        status('buffering', '');
       }
-      video.currentTime = target;
-      updateProgress();
-    }, SEEK_SETTLE_MS);
+    }
+    video.currentTime = target;
+    updateProgress();
   }
   /* Apply a seek that is still waiting for the settle delay, right now and with normal buffering.
      Used when the viewer presses play before the delay ends, so playback starts at the target
@@ -371,11 +421,77 @@ var Player = (function () {
     el('chatPanel').classList.toggle('hidden', !chatOn);
   }
   function toggleChat() {
-    if (isVod() || !opts) return;
+    if (!opts || isVod()) return;  // past broadcasts and rewind have no chat
     chatOn = !chatOn;
     Store.set('kickizle.chat', chatOn);
     applyChat();
     if (chatOn) Chat.connect(opts.channelId, opts.chatroomId); else Chat.disconnect();
+  }
+
+  /* ---------- Rewind ---------- */
+  function applyMode() {
+    var badge = el('osdLive');
+    badge.textContent = I18n.t(opts.rewind ? 'rewindBadge' : 'live');
+    badge.className = 'badge ' + (opts.rewind ? 'behind' : 'live') + (isVod() && !opts.rewind ? ' hidden' : '');
+    el('progress').classList.toggle('hidden', !isVod());
+    el('osdHint').textContent = I18n.t(opts.rewind ? 'hintRewind' : isVod() ? 'hintVod' : 'hintLive');
+    if (!isVod()) el('osdTime').textContent = '';
+  }
+  /* From live: open the recording `back` seconds behind the live picture, paused on that frame. */
+  function enterRewind(back) {
+    if (!opts || opts.kind !== 'live' || !opts.getRecording) return;
+    if (rewindBusy) { adjustRewind(-1); return; }  // already opening: go further back
+    rewindBusy = true;
+    rewindLoading = true;
+    rewindTarget = back;
+    seekStep();  // start the press streak so held presses accelerate
+    status('loadingStream', '');
+    opts.getRecording(function (src, startedAt) {
+      rewindBusy = false;
+      if (!opts || opts.kind !== 'live') return;
+      if (!src) { rewindLoading = false; hideStatus(); toast(I18n.t('rewindUnavailable')); return; }
+      // Estimate the recording's length from the stream start; corrected when its playlist loads.
+      var started = startedAt ? Date.parse(String(startedAt).replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(startedAt) ? '' : 'Z')) : NaN;
+      var length = isNaN(started) ? 0 : (Date.now() - started) / 1000 - RECORD_LAG_S;
+      opts.liveUrl = opts.url; opts.url = src; opts.kind = 'vod'; opts.rewind = true;
+      rewind = { snapAt: Date.now() };
+      pendingSeek = null; clearTimeout(seekTimer);
+      // The chat belongs to the live moment, not to what you're rewatching: close it (the saved
+      // preference stays, so it comes back with live).
+      if (chatOn) { chatOn = false; applyChat(); Chat.disconnect(); }
+      applyMode();
+      showOsd(true);
+      load(src, Math.max(0, length - rewindTarget), true);
+    });
+  }
+  /* Back to the live stream (fresh link: the old one may have expired while rewinding). */
+  function goLive() {
+    if (!opts || !opts.rewind) return;
+    clearTimeout(seekTimer); pendingSeek = null; frameOnly = false; startPaused = false;
+    rewindLoading = false;
+    opts.kind = 'live'; opts.rewind = false; rewind = null;
+    if (Store.get('kickizle.chat', true) && !chatOn) { chatOn = true; applyChat(); Chat.connect(opts.channelId, opts.chatroomId); }
+    el('pauseIcon').classList.add('hidden');
+    applyMode();
+    toast(I18n.t('backToLive'));
+    status('loadingStream', '');
+    var get = opts.getLiveUrl || function (cb) { cb(opts.liveUrl); };
+    get(function (url) {
+      if (!opts || opts.kind !== 'live') return;
+      if (!url) { status('streamEnded', '', true); return; }
+      opts.url = url;
+      load(url, 0);
+    });
+  }
+  /* Playing reached the end of the recording as it was when opened. Still well behind live
+     (e.g. after a long pause)? Reopen the recording where we are; otherwise rejoin live. */
+  function rewindReachedEnd() {
+    var behind = (Date.now() - rewind.snapAt) / 1000 + RECORD_LAG_S;
+    if (behind < 40) { goLive(); return; }
+    var at = video.currentTime;
+    rewind.snapAt = Date.now();
+    status('buffering', '');
+    load(opts.url, at);
   }
 
   /* ---------- Aç / kapat ---------- */
@@ -386,11 +502,9 @@ var Player = (function () {
     el('pauseIcon').classList.add('hidden');
     el('osdChannel').textContent = o.channelName || '';
     el('osdTitle').textContent = o.title || '';
-    el('osdLive').textContent = I18n.t('live');
-    el('osdLive').classList.toggle('hidden', isVod());
-    el('progress').classList.toggle('hidden', !isVod());
+    rewind = null;
+    applyMode();  // badge, progress bar and hint for live / past broadcast
     el('osdTime').textContent = '';
-    el('osdHint').textContent = I18n.t(isVod() ? 'hintVod' : 'hintLive');
     el('osdQuality').textContent = '';
     chatOn = !isVod() && Store.get('kickizle.chat', true);
     applyChat();
@@ -419,6 +533,7 @@ var Player = (function () {
     Chat.disconnect();
     destroyHls();
     try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
+    rewind = null; rewindBusy = false; rewindLoading = false; startPaused = false;
     opts = null;
   }
   function exit() { stop(); if (onExit) onExit(); }
@@ -479,7 +594,7 @@ var Player = (function () {
     switch (code) {
       case K.UP: openMenu(); break;
       case K.DOWN: toggleChat(); break;
-      case K.LEFT: case K.RW: seekBy(-1); break;
+      case K.LEFT: case K.RW: if (opts.kind === 'live') enterRewind(10); else seekBy(-1); break;
       case K.RIGHT: case K.FF: seekBy(1); break;
       case K.ENTER: case K.PLAYPAUSE: case K.SPACE: togglePause(); break;
       case K.PLAY: commitSeek(); play(); break;
